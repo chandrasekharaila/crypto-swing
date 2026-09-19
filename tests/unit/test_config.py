@@ -6,7 +6,18 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from crypto_analyzer.config import AppSettings
+from crypto_analyzer.config import AppSettings, load_settings
+
+UNIVERSE_PATH = Path(__file__).resolve().parents[2] / "config" / "universe.json"
+
+
+def test_research_universe_loads_and_is_consistent() -> None:
+    """Every dataset on disk depends on this file, so it must stay valid."""
+    settings = load_settings(UNIVERSE_PATH)
+
+    assert len(settings.symbols) > 3
+    assert len(set(settings.symbols)) == len(settings.symbols)
+    assert settings.primary_timeframe in settings.timeframes
 
 
 def test_default_settings_cover_initial_market_scope() -> None:
