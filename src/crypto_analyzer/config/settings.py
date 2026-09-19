@@ -23,6 +23,7 @@ class AppSettings(BaseModel):
     request_timeout_seconds: float = Field(default=30.0, gt=0)
     max_retries: int = Field(default=3, ge=0)
     retry_backoff_seconds: float = Field(default=1.0, ge=0)
+    default_history_candles: int = Field(default=200, ge=1)
 
     data_directory: Path = Path("data")
 

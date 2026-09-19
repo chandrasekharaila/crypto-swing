@@ -63,6 +63,10 @@ class ParquetMarketDataStore:
         """Load existing raw data, or an empty canonical frame if absent."""
         return self._load(MarketDataLayer.RAW, symbol, timeframe)
 
+    def path_for_raw(self, symbol: str, timeframe: str) -> Path:
+        """Return the deterministic raw dataset path."""
+        return self.path_for(MarketDataLayer.RAW, symbol, timeframe)
+
     def load_processed(self, symbol: str, timeframe: str) -> pd.DataFrame:
         """Load existing processed data, or an empty canonical frame if absent."""
         return self._load(MarketDataLayer.PROCESSED, symbol, timeframe)

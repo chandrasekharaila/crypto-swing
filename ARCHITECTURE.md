@@ -29,6 +29,12 @@ merged atomically, exact overlaps are deduplicated, and conflicting overlaps
 are rejected. Cache range inspection identifies only missing intervals for a
 collector; the storage module has no Binance client dependency.
 
+`MarketDataPipeline` coordinates the boundaries without coupling storage to
+Binance. It checks cache coverage, invokes the collector only for missing
+ranges, converts typed candles to a canonical frame, validates the frame, and
+merges it into raw Parquet storage. The CLI is a thin configuration and logging
+layer over this service.
+
 The package uses a `src` layout. Data responsibilities are separated into
 collectors, validators, processors, and storage modules. A future data service
 will coordinate those components without embedding their behavior in the HTTP

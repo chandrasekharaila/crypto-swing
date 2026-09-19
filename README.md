@@ -26,3 +26,16 @@ pytest
 `crypto_analyzer.config.AppSettings` centralizes Phase 1 settings. Defaults
 cover BTC/USDT, ETH/USDT, and SOL/USDT on 15m, 1h, 4h, and 1d timeframes.
 Settings can be overridden explicitly when constructing the object.
+
+An optional JSON configuration file can contain any `AppSettings` fields.
+
+## Download market data
+
+```bash
+python -m crypto_analyzer download --symbol BTC/USDT --timeframe 4h
+```
+
+By default, this updates the latest configured number of closed candles. Use
+`--start` and `--end` with aligned ISO-8601 timestamps for a specific range, or
+`--candles` for a smaller recent update. Existing Parquet coverage is checked
+before Binance is called.
