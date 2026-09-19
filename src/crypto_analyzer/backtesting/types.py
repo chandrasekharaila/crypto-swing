@@ -96,6 +96,8 @@ class TradeRecord:
     mae: float
     mfe: float
     ambiguous: bool
+    resolved_intrabar: bool = False
+    """Whether finer candles decided the outcome rather than the assumption."""
 
     @property
     def is_usable(self) -> bool:

@@ -15,6 +15,7 @@ import pandas as pd
 
 from crypto_analyzer.backtesting.config import BacktestSettings
 from crypto_analyzer.backtesting.exceptions import BacktestInputError
+from crypto_analyzer.backtesting.intrabar import IntrabarResolver
 from crypto_analyzer.backtesting.metrics import bars_per_year, compute_metrics
 from crypto_analyzer.backtesting.portfolio import build_equity_curve
 from crypto_analyzer.backtesting.simulator import CandleSeries, simulate_trade
@@ -54,6 +55,8 @@ class BacktestEngine:
         self,
         candles_by_symbol: Mapping[str, pd.DataFrame],
         scans: Sequence[SetupScan],
+        *,
+        intrabar: IntrabarResolver | None = None,
     ) -> BacktestResult:
         """Return trades, skipped signals, an equity curve, and metrics.
 
@@ -117,7 +120,12 @@ class BacktestEngine:
                         f"signal at {stamp} does not match a candle of {scan.symbol}"
                     )
                 outcome = simulate_trade(
-                    signal, index, series, settings, last_index=last_index
+                    signal,
+                    index,
+                    series,
+                    settings,
+                    last_index=last_index,
+                    intrabar=intrabar,
                 )
                 if isinstance(outcome, TradeRecord):
                     trades.append(outcome)

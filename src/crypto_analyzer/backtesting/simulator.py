@@ -22,6 +22,7 @@ import pandas as pd
 
 from crypto_analyzer.backtesting.config import BacktestSettings
 from crypto_analyzer.backtesting.exceptions import BacktestLeakageError
+from crypto_analyzer.backtesting.intrabar import IntrabarResolver
 from crypto_analyzer.backtesting.types import (
     AmbiguousExitPolicy,
     ExitReason,
@@ -79,6 +80,7 @@ def simulate_trade(
     settings: BacktestSettings,
     *,
     last_index: int,
+    intrabar: IntrabarResolver | None = None,
 ) -> TradeRecord | SkippedSignal:
     """Simulate one signal as a single trade, or report why it produced none.
 
@@ -117,6 +119,7 @@ def simulate_trade(
     exit_reason: ExitReason | None = None
     raw_exit: float | None = None
     ambiguous = False
+    resolved_intrabar = False
     lowest = series.low[entry_index]
     highest = series.high[entry_index]
 
@@ -140,7 +143,28 @@ def simulate_trade(
         target_hit = bar_high >= target if sign > 0 else bar_low <= target
         if stop_hit and target_hit:
             ambiguous = True
-            if settings.ambiguous_exit_policy is AmbiguousExitPolicy.STOP_FIRST:
+            decided = (
+                intrabar.resolve(
+                    signal.symbol,
+                    series.open_time[index],
+                    signal.direction,
+                    stop,
+                    target,
+                )
+                if intrabar is not None
+                else None
+            )
+            if decided is ExitReason.STOP_LOSS:
+                exit_index, exit_reason, raw_exit = index, ExitReason.STOP_LOSS, stop
+                resolved_intrabar = True
+            elif decided is ExitReason.TAKE_PROFIT:
+                exit_index, exit_reason, raw_exit = (
+                    index,
+                    ExitReason.TAKE_PROFIT,
+                    target,
+                )
+                resolved_intrabar = True
+            elif settings.ambiguous_exit_policy is AmbiguousExitPolicy.STOP_FIRST:
                 exit_index, exit_reason, raw_exit = index, ExitReason.STOP_LOSS, stop
             else:
                 exit_index, exit_reason, raw_exit = (
@@ -204,4 +228,5 @@ def simulate_trade(
         mae=mae,
         mfe=mfe,
         ambiguous=ambiguous,
+        resolved_intrabar=resolved_intrabar,
     )
