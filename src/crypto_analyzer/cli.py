@@ -9,10 +9,11 @@ from pathlib import Path
 from crypto_analyzer.config import AppSettings, load_settings
 from crypto_analyzer.config.markets import floor_to_timeframe, is_timeframe_boundary
 from crypto_analyzer.data.collectors import BinanceOHLCVCollector
-from crypto_analyzer.data.exceptions import ConfigurationError, DataFoundationError
+from crypto_analyzer.data.exceptions import ConfigurationError
 from crypto_analyzer.data.service import MarketDataPipeline
 from crypto_analyzer.data.storage import ParquetMarketDataStore
 from crypto_analyzer.data.validators import timeframe_duration
+from crypto_analyzer.exceptions import AnalyzerError
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +96,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             return 1
         return 0
-    except DataFoundationError as error:
+    except AnalyzerError as error:
         logger.error("Download failed: %s", error)
         return 1
     except KeyboardInterrupt:

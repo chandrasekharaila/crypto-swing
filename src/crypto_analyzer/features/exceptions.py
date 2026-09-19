@@ -1,7 +1,9 @@
-"""Explicit exception categories for Phase 2 feature engineering."""
+"""Explicit exception categories for feature engineering."""
+
+from crypto_analyzer.exceptions import AnalyzerError
 
 
-class FeatureEngineeringError(Exception):
+class FeatureEngineeringError(AnalyzerError):
     """Base class for expected feature-engineering failures."""
 
 

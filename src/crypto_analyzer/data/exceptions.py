@@ -1,7 +1,9 @@
 """Explicit exception categories for the data foundation."""
 
+from crypto_analyzer.exceptions import AnalyzerError
 
-class DataFoundationError(Exception):
+
+class DataFoundationError(AnalyzerError):
     """Base class for expected data-foundation failures."""
 
 
