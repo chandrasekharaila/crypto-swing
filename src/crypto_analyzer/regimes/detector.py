@@ -18,13 +18,13 @@ from typing import Any
 
 import pandas as pd
 
+from crypto_analyzer.evidence import Evidence
 from crypto_analyzer.features.primitives import safe_divide
 from crypto_analyzer.features.types import FeatureSet
 from crypto_analyzer.regimes.config import RegimeSettings
 from crypto_analyzer.regimes.exceptions import RegimeInputError
 from crypto_analyzer.regimes.types import (
     UNKNOWN_REGIME,
-    RegimeEvidence,
     RegimeResult,
     TrendRegime,
     VolatilityRegime,
@@ -109,15 +109,13 @@ def _volatility_support(ratio: Any, settings: RegimeSettings) -> str:
     return VolatilityRegime.NORMAL.value
 
 
-def build_evidence(
-    row: pd.Series, settings: RegimeSettings
-) -> tuple[RegimeEvidence, ...]:
+def build_evidence(row: pd.Series, settings: RegimeSettings) -> tuple[Evidence, ...]:
     """Return the per-rule reasoning behind one classified row."""
     bullish = TrendRegime.BULLISH.value
     bearish = TrendRegime.BEARISH.value
     neutral = TrendRegime.SIDEWAYS.value
 
-    evidence: list[RegimeEvidence] = []
+    evidence: list[Evidence] = []
     bullish_votes = 0
     bearish_votes = 0
     for column, rule, label, threshold in _trend_rules(settings):
@@ -128,7 +126,7 @@ def build_evidence(
         bullish_votes += supports == bullish
         bearish_votes += supports == bearish
         evidence.append(
-            RegimeEvidence(
+            Evidence(
                 rule=rule,
                 supports=supports,
                 detail=_detail(label, value, threshold),
@@ -138,7 +136,7 @@ def build_evidence(
         )
 
     evidence.append(
-        RegimeEvidence(
+        Evidence(
             rule="trend_aggregate",
             supports=str(row["trend_regime"]),
             detail=(
@@ -151,7 +149,7 @@ def build_evidence(
 
     ratio = row[VOLATILITY_RATIO_COLUMN]
     evidence.append(
-        RegimeEvidence(
+        Evidence(
             rule="volatility_ratio",
             supports=_volatility_support(ratio, settings),
             detail=(

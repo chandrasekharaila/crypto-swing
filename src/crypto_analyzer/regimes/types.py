@@ -10,6 +10,7 @@ from enum import StrEnum
 
 import pandas as pd
 
+from crypto_analyzer.evidence import Evidence
 from crypto_analyzer.regimes.config import RegimeSettings
 
 UNKNOWN_REGIME = "unknown"
@@ -31,21 +32,6 @@ class VolatilityRegime(StrEnum):
     NORMAL = "normal_volatility"
     HIGH = "high_volatility"
     UNKNOWN = UNKNOWN_REGIME
-
-
-@dataclass(frozen=True, slots=True)
-class RegimeEvidence:
-    """One rule outcome, with the measurement that produced it.
-
-    ``supports`` is the regime this rule points at, so the evidence for a
-    classification can be read directly rather than inferred from the label.
-    """
-
-    rule: str
-    supports: str
-    detail: str
-    value: float | None = None
-    threshold: float | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,7 +70,7 @@ class RegimeResult:
         """Return the three label columns in deterministic order."""
         return (self.trend_column, self.volatility_column, self.combined_column)
 
-    def explain(self, position: int = -1) -> tuple[RegimeEvidence, ...]:
+    def explain(self, position: int = -1) -> tuple[Evidence, ...]:
         """Return the per-rule reasoning for one row, newest row by default."""
         if not self.frame.empty and not -len(self.frame) <= position < len(self.frame):
             raise IndexError(f"position out of range: {position}")
