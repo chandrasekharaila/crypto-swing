@@ -11,10 +11,10 @@ from tempfile import NamedTemporaryFile
 
 import pandas as pd
 
-from crypto_analyzer.config.markets import is_timeframe_boundary
 from crypto_analyzer.data.exceptions import DataStorageError, DataValidationError
 from crypto_analyzer.data.processors.candles import CANONICAL_COLUMNS
 from crypto_analyzer.data.validators import OHLCVValidator, timeframe_duration
+from crypto_analyzer.markets import is_timeframe_boundary
 
 _MARKET_COMPONENT = re.compile(r"^[A-Za-z0-9]+$")
 _TIMEFRAME_COMPONENT = re.compile(r"^[1-9][0-9]*[smhdwM]$")

@@ -7,24 +7,17 @@ profit; they describe what was observed and what would contradict it.
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import StrEnum
 
 from crypto_analyzer.evidence import Evidence
+from crypto_analyzer.taxonomy import Direction, SetupType
 
-
-class Direction(StrEnum):
-    """Side of the market a setup anticipates."""
-
-    LONG = "long"
-    SHORT = "short"
-
-
-class SetupType(StrEnum):
-    """Family of swing setup."""
-
-    TREND_CONTINUATION = "trend_continuation"
-    BREAKOUT = "breakout"
-    MEAN_REVERSION = "mean_reversion"
+__all__ = [
+    "Direction",
+    "PriceContext",
+    "SetupScan",
+    "SetupSignal",
+    "SetupType",
+]
 
 
 @dataclass(frozen=True, slots=True)

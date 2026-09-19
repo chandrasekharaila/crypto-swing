@@ -1,4 +1,10 @@
-"""Supported Binance market identifiers and fixed timeframe boundaries."""
+"""Binance interval durations and candle boundary arithmetic.
+
+This is exchange metadata rather than user configuration, so it lives at the top
+level: it is fixed by Binance, never overridden, and is needed by the data layer
+before any settings exist. Keeping it here also keeps importing a duration from
+pulling in the configuration package, which imports every component's settings.
+"""
 
 from datetime import UTC, datetime, timedelta
 

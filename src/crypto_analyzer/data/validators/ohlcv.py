@@ -8,13 +8,13 @@ from typing import Any
 
 import pandas as pd
 
-from crypto_analyzer.config.markets import BINANCE_TIMEFRAME_DURATIONS
 from crypto_analyzer.data.exceptions import ConfigurationError
 from crypto_analyzer.data.validators.report import (
     IssueSeverity,
     ValidationIssue,
     ValidationReport,
 )
+from crypto_analyzer.markets import BINANCE_TIMEFRAME_DURATIONS
 
 REQUIRED_COLUMNS = frozenset(
     {"open_time", "close_time", "open", "high", "low", "close", "volume"}

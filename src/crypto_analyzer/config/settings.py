@@ -6,8 +6,9 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
-from crypto_analyzer.config.markets import BINANCE_TIMEFRAME_DURATIONS
+from crypto_analyzer.backtesting.config import BacktestSettings
 from crypto_analyzer.features.config import FeatureSettings
+from crypto_analyzer.markets import BINANCE_TIMEFRAME_DURATIONS
 from crypto_analyzer.regimes.config import RegimeSettings
 from crypto_analyzer.setups.config import SetupSettings
 
@@ -35,6 +36,7 @@ class AppSettings(BaseModel):
     features: FeatureSettings = FeatureSettings()
     regimes: RegimeSettings = RegimeSettings()
     setups: SetupSettings = SetupSettings()
+    backtest: BacktestSettings = BacktestSettings()
 
     @model_validator(mode="after")
     def validate_consistency(self) -> Self:

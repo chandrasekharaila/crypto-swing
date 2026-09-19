@@ -1,5 +1,6 @@
 """Application configuration."""
 
+from crypto_analyzer.backtesting.config import BacktestSettings
 from crypto_analyzer.config.loader import load_settings
 from crypto_analyzer.config.settings import AppSettings
 from crypto_analyzer.features.config import FeatureSettings
@@ -8,6 +9,7 @@ from crypto_analyzer.setups.config import SetupSettings
 
 __all__ = [
     "AppSettings",
+    "BacktestSettings",
     "FeatureSettings",
     "RegimeSettings",
     "SetupSettings",

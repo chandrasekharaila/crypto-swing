@@ -12,13 +12,13 @@ from typing import Any
 import httpx
 
 from crypto_analyzer.config import AppSettings
-from crypto_analyzer.config.markets import BINANCE_TIMEFRAME_DURATIONS
 from crypto_analyzer.data.exceptions import (
     ConfigurationError,
     DataCollectionError,
     DataValidationError,
 )
 from crypto_analyzer.data.models import Candle
+from crypto_analyzer.markets import BINANCE_TIMEFRAME_DURATIONS
 
 logger = logging.getLogger(__name__)
 
