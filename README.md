@@ -6,8 +6,8 @@ trades or manage exchange accounts.
 ## Current phase
 
 Phase 1 — Data Foundation. The current implementation provides the project
-structure and typed configuration. Binance collection, validation, storage,
-and caching will be added incrementally.
+structure, typed configuration, and a Binance public historical OHLCV
+collector. Storage and caching will be added incrementally.
 
 ## Requirements
 

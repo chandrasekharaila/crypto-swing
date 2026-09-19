@@ -5,12 +5,17 @@
 ```text
 Configuration
     ↓
-Binance public collector (not yet implemented)
+Binance public collector
     ↓
 OHLCV validation and cleaning (not yet implemented)
     ↓
 Parquet storage and cache (not yet implemented)
 ```
+
+The Binance collector uses the unauthenticated Spot REST kline endpoint. It
+paginates bounded UTC ranges, retries transient network and API failures, honors
+numeric `Retry-After` headers, and removes candles that were not closed at the
+collector's clock snapshot.
 
 The package uses a `src` layout. Data responsibilities are separated into
 collectors, validators, processors, and storage modules. A future data service
