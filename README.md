@@ -10,7 +10,9 @@ configuration, a Binance public historical OHLCV collector, non-mutating OHLCV
 dataset validation, and atomic local Parquet storage with cache-aware range
 detection. Phase 2 adds a deterministic, point-in-time feature engine covering
 price, returns, trend, momentum, volatility, volume, and market structure.
-Phase 3 adds a transparent, rule-based regime detector.
+Phase 3 adds a transparent, rule-based regime detector and a swing setup engine.
+Setups are hypotheses about market context — nothing in this project claims they
+are profitable.
 
 ## Requirements
 
@@ -106,3 +108,28 @@ until it has enough history — the two warm up independently.
 `explain()` returns one entry per rule with the measured value and the threshold
 it was compared against, so a classification can always be traced back to the
 measurements behind it. Every threshold lives in `AppSettings.regimes`.
+
+## Swing setups
+
+```python
+from crypto_analyzer.setups import SetupDetector
+
+scan = SetupDetector().detect(features, candles, regimes)
+
+for signal in scan.signals:
+    print(signal.timestamp, signal.setup.value, signal.direction.value)
+    for item in signal.evidence:
+        print(f"   {item.rule}: {item.detail}")
+    print("   entry       :", signal.entry_context.level)
+    print("   invalidation:", signal.invalidation_context.level)
+```
+
+Three families are detected: trend continuation, breakout, and mean reversion.
+Each requires its regime context, so a continuation needs a trend and a mean
+reversion stays in a sideways market. Setups are hypotheses to be tested, not
+statements about profitability — no return, win rate, or probability is claimed
+anywhere in this layer.
+
+Every signal carries its reasoning, an entry reference price, a structural
+invalidation level with the reasoning behind it, and the feature readings the
+rules used. Thresholds live in `AppSettings.setups`.

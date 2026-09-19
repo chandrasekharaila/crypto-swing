@@ -176,7 +176,7 @@ market eras.
 
 ### Reasoning
 
-`RegimeResult.explain(position)` returns one `RegimeEvidence` per rule plus an
+`RegimeResult.explain(position)` returns one `Evidence` per rule plus an
 aggregate entry, each carrying the rule name, the regime it supports, the
 measured value, and the threshold it was compared against. The explanation is
 built from the stored measurements rather than reconstructed, so it cannot
@@ -192,3 +192,53 @@ classifiable reports `unknown` instead of a guess, and the combined label report
 Regime labels inherit the feature layer's causality, and the regime tests verify
 it directly: replacing every candle after a cut point leaves every earlier label
 and rule measurement unchanged.
+
+## Phase 3 setup detection
+
+```text
+candles + FeatureSet + RegimeResult
+    ↓
+setup rules (trend continuation, breakout, mean reversion)
+    ↓
+SetupScan of SetupSignal records
+```
+
+A setup is a hypothesis about market context. It is not a claim about
+profitability: nothing in this layer estimates a return, a win rate, or a
+probability of profit.
+
+`SetupDetector` reads the feature and regime layers rather than recomputing
+anything, so each family inherits the causality of the values beneath it. Every
+family also requires its regime context, which means a trend continuation cannot
+fire in a market that is not trending, and a mean reversion stays inside a
+sideways market unless that requirement is switched off.
+
+### Families
+
+| Family | Requires | Direction |
+|---|---|---|
+| trend continuation | a trending regime, price pulled back to its fast average, slope still with the trend, momentum not broken down, participation | with the trend |
+| breakout | a close beyond the prior window's extreme, band width narrow against its own trailing norm, volume expansion, price not already extended | with the break |
+| mean reversion | a sideways regime, price stretched from its fast average, momentum at an extreme, close outside a Bollinger band | against the stretch |
+
+Band width is compared against its own trailing norm rather than an absolute
+width, for the same reason volatility bands are relative: a fixed width does not
+transfer between instruments. The squeeze is measured on the candle *before* the
+break, so the break itself cannot widen the band that qualifies it.
+
+### Signal record
+
+Each `SetupSignal` carries the symbol, the timestamp and the `close_time` it
+became known at, the direction and family, the measured `evidence` for every
+rule, an entry reference price, an invalidation level with its reasoning, and the
+feature readings the rules consumed.
+
+Invalidation is structural rather than a fixed distance: continuation and
+reversion are invalidated by the trailing window extreme, and a breakout is
+invalidated by a close back through the level it broke.
+
+### Warm-up
+
+Setups inherit the warm-up of the layers beneath them. A condition that compares
+a missing value is false, so no signal can be produced before every input it
+needs exists; the regime context alone rules out the earliest rows.
