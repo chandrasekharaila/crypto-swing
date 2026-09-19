@@ -282,6 +282,14 @@ contains both the stop and the target, one of them must be chosen. The default i
 the pessimistic reading: the stop came first. The case is counted, so a reader can
 see how often it mattered rather than having to trust the choice.
 
+The choice can be replaced by a measurement. `IntrabarWindows` holds finer candles
+for the specific bars that were ambiguous, and the simulator consults it before
+falling back to the assumption. `scripts/resolve_ambiguity.py` collects those bars
+from a run, fetches the finer candles, and caches them, so a simulation itself never
+touches the network. On the current dataset the finer candles decide about 98% of
+the ambiguous cases, and they showed the pessimistic default to be right roughly
+71% of the time.
+
 ### Portfolio layer
 
 Trades are simulated independently, then assembled. Each trade risks

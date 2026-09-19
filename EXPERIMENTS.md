@@ -90,12 +90,47 @@ The setups show **no evidence of edge at these parameters**. The holdout
 corroborates the development window, so this is not an overfitted backtest
 collapsing — it is a consistent absence of edge, which is the more useful finding.
 
+### Follow-up — the intrabar path, measured rather than guessed
+
+The result above rests on an assumption: 17.9% of trades hit both the stop and the
+target inside one candle, and the backtest guessed that the stop came first.
+Switching the guess to the target gives a mean R of −0.108 instead of −0.646, so
+the assumption was carrying most of the answer.
+
+`scripts/resolve_ambiguity.py` replaces the guess with a measurement. It collected
+every ambiguous bar, fetched the 1-minute candles covering it, and cached them; the
+simulator now consults that cache instead of assuming. 1,405 windows were fetched,
+and the finer candles decided **98.0% of the development cases and 99.2% of the
+holdout cases**. The rest remain undecided because a single minute candle contained
+both levels, which is the same problem one scale down.
+
+| | Policy (guessed) | Finer candles (measured) |
+|---|---|---|
+| Development win rate | 26.4% | 31.0% |
+| Development mean R | −0.646 | **−0.494** |
+| Development profit factor | 0.705 | 0.750 |
+| Holdout win rate | 26.2% | 30.4% |
+| Holdout mean R | −0.713 | **−0.573** |
+| Holdout profit factor | 0.688 | 0.730 |
+
+**The pessimistic default was mostly right.** Of the resolved cases, 813 were the
+stop first and 327 the target, so the guess was correct about 71% of the time. That
+also means the crude "flip the policy" bound above was misleading: assuming every
+ambiguous bar resolved as a win put mean R at −0.108, but measuring put it at
+−0.494. Guessing in either direction was wrong; only the finer data settled it.
+
+The correction is real and worth about 0.15R, and the conclusion is unchanged. The
+setups still lose in both windows once the ambiguity is measured rather than
+assumed. Breakout is the family most affected — its development win rate rises from
+27.0% to 33.1%, because a break near a range extreme is exactly the situation that
+produces a bar touching both levels — and it is still clearly negative.
+
 Two things stand out:
 
 1. **Trend continuation is the only family near break-even.** In the holdout its
-   win rate (35.9%) clears the 33.3% requirement, but mean R is still slightly
-   negative because costs and stop-outs consume the difference. It is the one
-   candidate worth revisiting.
+   win rate (36.3%) clears the 33.3% requirement, but mean R is still −0.173
+   because costs and stop-outs consume the difference. It remains the one candidate
+   worth revisiting.
 2. **Breakout is both the most frequent and clearly negative.** It fires 3,558
    times in development and loses. Frequency is not evidence.
 
@@ -110,10 +145,15 @@ Two things stand out:
   not given a fair sample of their own signals.
 - Fees and slippage are assumptions. At these effect sizes, different assumptions
   change the magnitude but not the sign.
+- Intrabar resolution depends on a cached 1-minute dataset that is not committed.
+  Rebuild it with `scripts/resolve_ambiguity.py`; without it the run falls back to
+  the stop-first assumption and reports the more pessimistic numbers.
 
 ### Next step
 
-Phase 5 should not be expected to rescue a signal set with no edge. In order: why
-only 26% of trades reach a 2R target rather than 33%; whether the tight-stop
-artifact belongs in the setup layer as a validity filter; whether the position cap
-is discarding the better signals. Only then is a learned model worth adding.
+Phase 5 should not be expected to rescue a signal set with no edge. With the
+intrabar path now measured rather than assumed, the remaining questions are, in
+order: why only 31% of trades reach a 2R target when 33% is needed; whether the
+tight-stop artifact belongs in the setup layer as a validity filter; and whether
+the five-position cap is discarding the better signals. Only then is a learned
+model worth adding.

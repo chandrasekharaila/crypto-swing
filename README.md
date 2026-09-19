@@ -187,5 +187,22 @@ Setting `window_start` and `window_end` bounds the simulation, not just the
 signals: a trade still open at the window end is censored and excluded from the
 metrics, so a development run never reads the holdout.
 
+When one candle contains both the stop and the target, that candle cannot say
+which came first. Rather than guess, resolve it with finer candles:
+
+```bash
+python scripts/resolve_ambiguity.py     # fetch and cache the finer windows, once
+```
+
+```python
+from crypto_analyzer.backtesting import IntrabarWindows
+
+windows = IntrabarWindows.from_parquet(path)
+result = BacktestEngine().run(candles_by_symbol, scans, intrabar=windows)
+```
+
+Without a cache the run falls back to assuming the stop came first, which reports
+the more pessimistic numbers.
+
 **These setups showed no edge under this test.** See `EXPERIMENTS.md` for the
 record; nothing here is a claim of profitability.
