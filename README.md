@@ -158,3 +158,34 @@ anywhere in this layer.
 Every signal carries its reasoning, an entry reference price, a structural
 invalidation level with the reasoning behind it, and the feature readings the
 rules used. Thresholds live in `AppSettings.setups`.
+
+## Backtesting
+
+```python
+from crypto_analyzer.backtesting import BacktestEngine
+
+result = BacktestEngine().run(candles_by_symbol, scans)
+
+result.metrics.total_trades
+result.metrics.win_rate
+result.metrics.expectancy          # mean R per trade
+result.metrics.profit_factor
+result.metrics.max_drawdown
+result.metrics.sharpe_ratio
+result.metrics.average_holding_bars
+result.equity                      # per-bar equity, peak, drawdown, open positions
+result.trades[0].signal_time, result.trades[0].entry_time   # the execution delay
+```
+
+A signal decided at a candle's close is filled at the open of a later bar, so the
+price that triggered it can never be the price taken. A bar that opens beyond the
+stop fills at that open rather than the stop, and when one candle contains both
+levels the stop is assumed to have come first. Fees and slippage are charged on
+every fill; both live in `AppSettings.backtest`.
+
+Setting `window_start` and `window_end` bounds the simulation, not just the
+signals: a trade still open at the window end is censored and excluded from the
+metrics, so a development run never reads the holdout.
+
+**These setups showed no edge under this test.** See `EXPERIMENTS.md` for the
+record; nothing here is a claim of profitability.

@@ -242,3 +242,75 @@ invalidated by a close back through the level it broke.
 Setups inherit the warm-up of the layers beneath them. A condition that compares
 a missing value is false, so no signal can be produced before every input it
 needs exists; the regime context alone rules out the earliest rows.
+
+## Phase 4 backtesting
+
+```text
+candles + SetupScan
+    ↓
+fill simulation (one signal, one trade)
+    ↓
+portfolio assembly (sizing, equity curve, drawdown)
+    ↓
+metrics
+```
+
+Phase 4 exists to measure, not to tune. It changes no feature, no regime
+threshold, and no setup threshold, because any of those changes would invalidate
+the holdout.
+
+### Execution model
+
+A signal is decided at its candle's close, so the fill happens at the open of a
+later bar. `execution_delay_bars` is constrained to be at least one, which makes
+same-bar execution unrepresentable rather than merely discouraged.
+
+The stop comes from the signal's structural invalidation level. The target is an
+R multiple of the distance from the fill to that stop, so every trade risks the
+same fraction of equity and the R multiple is comparable across setups and
+symbols.
+
+Each bar is examined in a fixed order: a gap through a level first, then an
+ambiguous bar, then a single-sided touch, then the holding limit. A bar that
+opens beyond the stop fills at that open, not at the stop, because a gap is a
+real and unfavourable fact.
+
+### The unknowable intrabar path
+
+OHLC data does not reveal whether a bar's high or its low came first. When a bar
+contains both the stop and the target, one of them must be chosen. The default is
+the pessimistic reading: the stop came first. The case is counted, so a reader can
+see how often it mattered rather than having to trust the choice.
+
+### Portfolio layer
+
+Trades are simulated independently, then assembled. Each trade risks
+`risk_fraction` of equity at entry, subject to a notional cap, because risk-based
+sizing alone is unbounded: a structural stop a few basis points from the entry
+would otherwise imply enormous leverage and a round-trip fee that dwarfs the risk.
+Equity is marked to market every bar, so the drawdown reflects open positions
+rather than only closed ones. Entries stop once equity reaches zero, and the ruin
+is reported rather than drawn as a negative balance.
+
+This is a portfolio proxy, not an account. It assumes the modelled fills and
+ignores margin, funding, borrow, and any limit on notional beyond the cap.
+
+### Preventing look-ahead
+
+| Failure | How it is prevented |
+|---|---|
+| Filling at the price that triggered the signal | `entry_index = signal_index + delay`, with `delay >= 1` enforced by the type |
+| Using the signal bar's range to trigger an exit | The holding loop starts at the entry bar; earlier bars are unreachable |
+| Stop or target derived from a later bar | Levels come from the signal record, already covered by the Phases 2 and 3 causality sweeps |
+| Reading past the end of the window | The simulation is bounded by the last bar inside the window; a trade still open there is censored and excluded from metrics |
+| A December trade exiting in January | Censoring rather than completion, so a development run never reads a holdout bar |
+
+The engine also refuses to place a signal whose timestamp does not match a candle,
+and a runtime check rejects any fill that is not strictly later than the moment
+the signal became known.
+
+### Stated limitations
+
+Market impact beyond fixed slippage, funding and borrow, partial fills, exchange
+outages that would prevent an exit, and queue position are all unmodelled. Fees
+and slippage are stated assumptions, never fitted to the data.
