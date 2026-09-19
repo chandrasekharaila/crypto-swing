@@ -1,5 +1,6 @@
 """Unit tests for the Binance public OHLCV collector."""
 
+import logging
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -121,7 +122,33 @@ def test_excludes_candle_that_is_not_closed_at_clock_snapshot() -> None:
     assert [candle.open_time for candle in candles] == [closed_start]
 
 
-def test_excludes_candle_when_close_time_equals_clock_snapshot() -> None:
+def test_derives_the_close_boundary_from_the_interval() -> None:
+    """The exchange boundary is redundant, so a disagreeing one is not trusted.
+
+    Archived Binance candles carry spans of zero and of two hours on a four-hour
+    interval. The open time and the OHLCV values are taken as given; only the
+    close boundary is derived.
+    """
+    start = NOW - timedelta(hours=2)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json=[_kline(start, close_offset_ms=0)],
+            request=request,
+        )
+
+    candles = _collector(handler).fetch_historical("BTC/USDT", "1h", start, NOW)
+
+    assert len(candles) == 1
+    assert candles[0].open_time == start
+    assert candles[0].close_time == start + timedelta(hours=1) - timedelta(
+        milliseconds=1
+    )
+
+
+def test_a_disagreeing_boundary_does_not_hold_a_closed_candle_open(caplog) -> None:
+    """A candle whose stated boundary merely touches the snapshot has closed."""
     start = NOW - timedelta(hours=1)
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -131,9 +158,31 @@ def test_excludes_candle_when_close_time_equals_clock_snapshot() -> None:
             request=request,
         )
 
-    candles = _collector(handler).fetch_historical("BTC/USDT", "1h", start, NOW)
+    with caplog.at_level(logging.WARNING):
+        candles = _collector(handler).fetch_historical("BTC/USDT", "1h", start, NOW)
 
-    assert candles == []
+    assert len(candles) == 1
+    assert "disagrees" in caplog.text
+
+
+def test_a_malformed_archived_span_is_logged(caplog) -> None:
+    """A two-hour close on a four-hour interval must not pass silently."""
+    start = NOW - timedelta(hours=8)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json=[_kline(start, close_offset_ms=2 * HOUR_MS)],
+            request=request,
+        )
+
+    with caplog.at_level(logging.WARNING):
+        candles = _collector(handler).fetch_historical("BTC/USDT", "4h", start, NOW)
+
+    assert candles[0].close_time == start + timedelta(hours=4) - timedelta(
+        milliseconds=1
+    )
+    assert "disagrees" in caplog.text
 
 
 def test_retries_network_failure_with_exponential_backoff() -> None:

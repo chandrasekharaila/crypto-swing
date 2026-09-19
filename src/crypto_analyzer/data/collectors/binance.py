@@ -12,6 +12,7 @@ from typing import Any
 import httpx
 
 from crypto_analyzer.config import AppSettings
+from crypto_analyzer.config.markets import BINANCE_TIMEFRAME_DURATIONS
 from crypto_analyzer.data.exceptions import (
     ConfigurationError,
     DataCollectionError,
@@ -104,7 +105,7 @@ class BinanceOHLCVCollector:
             if not rows:
                 break
 
-            page = [self._parse_kline(row) for row in rows]
+            page = [self._parse_kline(row, timeframe) for row in rows]
             self._validate_page_order(page)
 
             for candle in page:
@@ -229,7 +230,16 @@ class BinanceOHLCVCollector:
         self._sleep(delay)
 
     @staticmethod
-    def _parse_kline(row: Any) -> Candle:
+    def _parse_kline(row: Any, timeframe: str) -> Candle:
+        """Build a candle, deriving the close boundary from the interval.
+
+        Binance reports a ``closeTime`` that is redundant: it is fully determined
+        by ``openTime`` and the interval. A handful of archived candles carry a
+        value that disagrees -- including spans of zero and of two hours on a
+        four-hour interval -- so the boundary is derived here and any
+        disagreement is logged rather than trusted. The open time and the OHLCV
+        values are taken from the payload unchanged.
+        """
         if not isinstance(row, list) or len(row) < 7:
             raise DataValidationError(
                 "Binance kline row must contain at least 7 fields"
@@ -254,12 +264,21 @@ class BinanceOHLCVCollector:
             )
         if high < max(open_price, close, low) or low > min(open_price, close, high):
             raise DataValidationError("Binance kline violates OHLC price bounds")
-        if close_ms < open_ms:
-            raise DataValidationError("Binance kline closes before it opens")
+        duration_ms = int(BINANCE_TIMEFRAME_DURATIONS[timeframe].total_seconds() * 1000)
+        derived_close_ms = open_ms + duration_ms - 1
+        if close_ms != derived_close_ms:
+            logger.warning(
+                "Binance close_time %s disagrees with the %s interval for candle "
+                "%s; using the derived boundary %s",
+                _from_milliseconds(close_ms).isoformat(),
+                timeframe,
+                _from_milliseconds(open_ms).isoformat(),
+                _from_milliseconds(derived_close_ms).isoformat(),
+            )
 
         return Candle(
             open_time=_from_milliseconds(open_ms),
-            close_time=_from_milliseconds(close_ms),
+            close_time=_from_milliseconds(derived_close_ms),
             open=open_price,
             high=high,
             low=low,
