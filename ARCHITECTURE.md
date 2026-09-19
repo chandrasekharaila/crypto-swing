@@ -105,8 +105,31 @@ replaces every later candle with a sentinel and requires the earlier values to
 stay put. Both run over the entire registry, so a newly registered feature is
 covered automatically.
 
+Breakout and swing-label features compare against levels formed entirely from
+earlier candles. A breakout uses the window immediately preceding the current
+candle, and a swing label compares the latest window extreme against the
+preceding, non-overlapping window, so neither can define its own reference.
+
 Warmup positions are missing values and are never filled. Each definition
 declares the candles it requires as `lookback`, and the first `lookback - 1`
-rows of that column are missing. Normalization, scaling, and feature selection
-are deliberately absent: they must be fit on training data only and belong to a
-later phase.
+rows of that column are missing.
+
+### Undefined values
+
+A ratio whose denominator is zero is not a measurement. Unless a feature can
+name a documented neutral value, the result is missing rather than a fabricated
+zero. `safe_divide` implements that default and every call site states its
+choice explicitly: a zero-width candle has no position, so
+`price_close_location` and `volatility_bollinger_position` report 0.5, and
+`momentum_stoch_k` reports 50. Magnitudes that are genuinely absent on such a
+candle -- a body, a wick, a band width -- report 0.0.
+
+A feature that can also go missing *after* its warmup declares it through
+`may_be_undefined`. That covers the rolling correlation, which has no value when
+either series is constant, and the volume change and relative volume, which have
+none when the base is exactly zero. A registry-wide test asserts that every
+feature is either defined past warmup or declares that it may not be, so an
+undeclared gap fails the suite rather than reaching a model.
+
+Normalization, scaling, and feature selection are deliberately absent: they must
+be fit on training data only and belong to a later phase.
