@@ -1,0 +1,1 @@
+"""Setup-detection tests."""
