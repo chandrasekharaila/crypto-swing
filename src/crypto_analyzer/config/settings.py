@@ -1,4 +1,4 @@
-"""Typed configuration for the Phase 1 data foundation."""
+"""Typed configuration for the data foundation and feature engineering."""
 
 from datetime import datetime
 from pathlib import Path
@@ -7,6 +7,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 from crypto_analyzer.config.markets import BINANCE_TIMEFRAME_DURATIONS
+from crypto_analyzer.features.config import FeatureSettings
 
 
 class AppSettings(BaseModel):
@@ -28,6 +29,8 @@ class AppSettings(BaseModel):
     default_history_candles: int = Field(default=200, ge=1)
 
     data_directory: Path = Path("data")
+
+    features: FeatureSettings = FeatureSettings()
 
     @model_validator(mode="after")
     def validate_consistency(self) -> Self:
