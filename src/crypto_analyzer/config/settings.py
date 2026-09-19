@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
 from crypto_analyzer.config.markets import BINANCE_TIMEFRAME_DURATIONS
 from crypto_analyzer.features.config import FeatureSettings
+from crypto_analyzer.regimes.config import RegimeSettings
 
 
 class AppSettings(BaseModel):
@@ -31,6 +32,7 @@ class AppSettings(BaseModel):
     data_directory: Path = Path("data")
 
     features: FeatureSettings = FeatureSettings()
+    regimes: RegimeSettings = RegimeSettings()
 
     @model_validator(mode="after")
     def validate_consistency(self) -> Self:
