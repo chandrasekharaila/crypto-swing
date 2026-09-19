@@ -6,6 +6,8 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, model_validator
 
+from crypto_analyzer.config.markets import BINANCE_TIMEFRAME_DURATIONS
+
 
 class AppSettings(BaseModel):
     """Central configuration for public market-data collection and storage."""
@@ -34,13 +36,20 @@ class AppSettings(BaseModel):
             raise ValueError("at least one symbol must be configured")
         if len(set(self.symbols)) != len(self.symbols):
             raise ValueError("symbols must be unique")
-        if any(symbol.count("/") != 1 or not all(symbol.split("/")) for symbol in self.symbols):
+        if any(
+            symbol.count("/") != 1
+            or not all(part.isalnum() for part in symbol.split("/"))
+            for symbol in self.symbols
+        ):
             raise ValueError("symbols must use BASE/QUOTE format")
 
         if not self.timeframes:
             raise ValueError("at least one timeframe must be configured")
         if len(set(self.timeframes)) != len(self.timeframes):
             raise ValueError("timeframes must be unique")
+        unsupported = sorted(set(self.timeframes).difference(BINANCE_TIMEFRAME_DURATIONS))
+        if unsupported:
+            raise ValueError(f"unsupported Binance timeframes: {', '.join(unsupported)}")
         if self.primary_timeframe not in self.timeframes:
             raise ValueError("primary_timeframe must be included in timeframes")
 

@@ -51,6 +51,15 @@ def test_reports_missing_required_columns() -> None:
     assert "high, volume" in report.errors[0].message
 
 
+def test_rejects_columns_outside_canonical_schema() -> None:
+    frame = _valid_frame()
+    frame["untracked"] = 1
+
+    report = OHLCVValidator().validate(frame, "1h", as_of=AS_OF)
+
+    assert "unexpected_columns" in _codes(report)
+
+
 def test_reports_missing_values_with_rows() -> None:
     frame = _valid_frame()
     frame.loc[1, "close"] = None

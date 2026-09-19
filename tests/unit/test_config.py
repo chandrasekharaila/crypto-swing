@@ -29,7 +29,9 @@ def test_settings_allow_additional_symbols() -> None:
     [
         ({"symbols": ()}, "at least one symbol"),
         ({"symbols": ("BTCUSDT",)}, "BASE/QUOTE"),
+        ({"symbols": ("BTC/USD-T",)}, "BASE/QUOTE"),
         ({"timeframes": ("1h",), "primary_timeframe": "4h"}, "primary_timeframe"),
+        ({"timeframes": ("17m",), "primary_timeframe": "17m"}, "unsupported Binance"),
     ],
 )
 def test_settings_reject_inconsistent_market_configuration(

@@ -36,6 +36,7 @@ class DataUpdateResult:
     symbol: str
     timeframe: str
     requested_ranges: tuple[TimeRange, ...]
+    unresolved_ranges: tuple[TimeRange, ...]
     downloaded_candles: int
     stored_candles: int
     path: Path
@@ -43,6 +44,11 @@ class DataUpdateResult:
     @property
     def cache_hit(self) -> bool:
         return not self.requested_ranges
+
+    @property
+    def is_complete(self) -> bool:
+        """Whether every candle in the requested range is now cached."""
+        return not self.unresolved_ranges
 
 
 class MarketDataPipeline:
@@ -78,7 +84,7 @@ class MarketDataPipeline:
                 extra={"symbol": symbol, "timeframe": timeframe},
             )
             return DataUpdateResult(
-                symbol, timeframe, (), 0, len(stored), path
+                symbol, timeframe, (), (), 0, len(stored), path
             )
 
         downloaded_count = 0
@@ -120,6 +126,16 @@ class MarketDataPipeline:
             downloaded_count += len(frame)
 
         stored = self._store.load_raw(symbol, timeframe)
+        unresolved_ranges = tuple(
+            self._store.missing_ranges(symbol, timeframe, start, end)
+        )
+        if unresolved_ranges:
+            logger.error(
+                "Update incomplete for %s %s: %d range(s) remain unresolved",
+                symbol,
+                timeframe,
+                len(unresolved_ranges),
+            )
         logger.info(
             "Update complete for %s %s: downloaded=%d stored=%d path=%s",
             symbol,
@@ -132,6 +148,7 @@ class MarketDataPipeline:
             symbol,
             timeframe,
             missing_ranges,
+            unresolved_ranges,
             downloaded_count,
             len(stored),
             path,

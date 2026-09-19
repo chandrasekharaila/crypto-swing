@@ -121,6 +121,21 @@ def test_excludes_candle_that_is_not_closed_at_clock_snapshot() -> None:
     assert [candle.open_time for candle in candles] == [closed_start]
 
 
+def test_excludes_candle_when_close_time_equals_clock_snapshot() -> None:
+    start = NOW - timedelta(hours=1)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json=[_kline(start, close_offset_ms=HOUR_MS)],
+            request=request,
+        )
+
+    candles = _collector(handler).fetch_historical("BTC/USDT", "1h", start, NOW)
+
+    assert candles == []
+
+
 def test_retries_network_failure_with_exponential_backoff() -> None:
     start = NOW - timedelta(hours=1)
     attempts = 0
@@ -163,6 +178,48 @@ def test_honors_retry_after_on_rate_limit_response() -> None:
 
     assert len(candles) == 1
     assert sleeps == [3.0]
+
+
+def test_honors_http_date_retry_after_on_rate_limit_response() -> None:
+    start = NOW - timedelta(hours=1)
+    attempts = 0
+    sleeps: list[float] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(
+                429,
+                headers={"Retry-After": "Tue, 02 Jan 2024 00:00:04 GMT"},
+                json={},
+                request=request,
+            )
+        return httpx.Response(200, json=[_kline(start)], request=request)
+
+    candles = _collector(handler, sleeps=sleeps).fetch_historical(
+        "BTC/USDT", "1h", start, NOW
+    )
+
+    assert len(candles) == 1
+    assert sleeps == [4.0]
+
+
+def test_raises_after_rate_limit_retries_are_exhausted() -> None:
+    attempts = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(429, headers={"Retry-After": "0"}, request=request)
+
+    settings = AppSettings(max_retries=2, retry_backoff_seconds=0)
+    with pytest.raises(DataCollectionError, match="after 3 attempts"):
+        _collector(handler, settings=settings).fetch_historical(
+            "BTC/USDT", "1h", NOW - timedelta(hours=1), NOW
+        )
+
+    assert attempts == 3
 
 
 def test_does_not_retry_non_transient_api_error() -> None:

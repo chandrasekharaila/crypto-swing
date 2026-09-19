@@ -119,6 +119,18 @@ def test_absent_dataset_returns_whole_requested_range(tmp_path: Path) -> None:
     ) == [TimeRange(START, START + timedelta(hours=2))]
 
 
+def test_missing_ranges_reject_shifted_candle_boundaries(tmp_path: Path) -> None:
+    store = ParquetMarketDataStore(tmp_path)
+
+    with pytest.raises(DataStorageError, match="Binance candle boundaries"):
+        store.missing_ranges(
+            "BTC/USDT",
+            "1h",
+            START + timedelta(minutes=30),
+            START + timedelta(hours=2, minutes=30),
+        )
+
+
 def test_typed_candle_flows_through_frame_conversion_and_parquet(tmp_path: Path) -> None:
     store = ParquetMarketDataStore(tmp_path)
     candle = Candle(

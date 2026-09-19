@@ -7,7 +7,7 @@ from pathlib import Path
 from crypto_analyzer.config import AppSettings
 from crypto_analyzer.data.models import Candle
 from crypto_analyzer.data.service import MarketDataPipeline
-from crypto_analyzer.data.storage import ParquetMarketDataStore
+from crypto_analyzer.data.storage import ParquetMarketDataStore, TimeRange
 
 START = datetime(2024, 1, 1, tzinfo=UTC)
 
@@ -73,3 +73,31 @@ def test_pipeline_is_idempotent_and_skips_unnecessary_api_calls(tmp_path: Path) 
     assert result.cache_hit
     assert result.downloaded_candles == 0
     assert collector.calls == []
+
+
+def test_pipeline_reports_unresolved_ranges_after_partial_download(tmp_path: Path) -> None:
+    class PartialCollector(RecordingCollector):
+        def fetch_historical(
+            self,
+            symbol: str,
+            timeframe: str,
+            start_time: datetime,
+            end_time: datetime | None = None,
+        ) -> list[Candle]:
+            candles = super().fetch_historical(symbol, timeframe, start_time, end_time)
+            return candles[:1]
+
+    pipeline = MarketDataPipeline(
+        AppSettings(data_directory=tmp_path),
+        PartialCollector(),
+        ParquetMarketDataStore(tmp_path),
+    )
+    end = START + timedelta(hours=3)
+
+    result = pipeline.update("BTC/USDT", "1h", START, end)
+
+    assert not result.is_complete
+    assert result.unresolved_ranges == (
+        # The one returned candle remains cached; only the missing suffix is unresolved.
+        TimeRange(START + timedelta(hours=1), end),
+    )

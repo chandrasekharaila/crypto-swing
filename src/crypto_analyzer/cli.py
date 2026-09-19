@@ -2,11 +2,12 @@
 
 import argparse
 from collections.abc import Sequence
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 import logging
 from pathlib import Path
 
 from crypto_analyzer.config import AppSettings, load_settings
+from crypto_analyzer.config.markets import floor_to_timeframe, is_timeframe_boundary
 from crypto_analyzer.data.collectors import BinanceOHLCVCollector
 from crypto_analyzer.data.exceptions import DataFoundationError, ConfigurationError
 from crypto_analyzer.data.service import MarketDataPipeline
@@ -77,6 +78,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                 result.stored_candles,
                 result.path,
             )
+        if not result.is_complete:
+            logger.error(
+                "Download remains incomplete: %d unresolved range(s)",
+                len(result.unresolved_ranges),
+            )
+            return 1
         return 0
     except DataFoundationError as error:
         logger.error("Download failed: %s", error)
@@ -101,7 +108,7 @@ def resolve_download_range(
     """Resolve a complete, timeframe-aligned historical request range."""
     duration = timeframe_duration(timeframe)
     current = (now or datetime.now(UTC)).astimezone(UTC)
-    resolved_end = end or settings.history_end or _floor_time(current, duration)
+    resolved_end = end or settings.history_end or floor_to_timeframe(current, timeframe)
     resolved_end = resolved_end.astimezone(UTC)
     count = candle_count or settings.default_history_candles
     resolved_start = start or settings.history_start or resolved_end - count * duration
@@ -109,9 +116,9 @@ def resolve_download_range(
 
     if resolved_start >= resolved_end:
         raise ConfigurationError("download start must be earlier than end")
-    if not _is_aligned(resolved_start, duration) or not _is_aligned(
-        resolved_end, duration
-    ):
+    if not is_timeframe_boundary(
+        resolved_start, timeframe
+    ) or not is_timeframe_boundary(resolved_end, timeframe):
         raise ConfigurationError(
             f"download range must align to {timeframe} candle boundaries"
         )
@@ -137,16 +144,3 @@ def _positive_int(value: str) -> int:
         raise argparse.ArgumentTypeError("value must be positive")
     return parsed
 
-
-def _floor_time(value: datetime, duration: timedelta) -> datetime:
-    duration_seconds = int(duration.total_seconds())
-    timestamp = int(value.timestamp())
-    return datetime.fromtimestamp(
-        timestamp - timestamp % duration_seconds,
-        tz=UTC,
-    )
-
-
-def _is_aligned(value: datetime, duration: timedelta) -> bool:
-    duration_seconds = int(duration.total_seconds())
-    return value.microsecond == 0 and int(value.timestamp()) % duration_seconds == 0

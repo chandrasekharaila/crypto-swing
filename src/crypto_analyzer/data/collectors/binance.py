@@ -3,6 +3,8 @@
 from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
+from email.utils import parsedate_to_datetime
+from itertools import pairwise
 import logging
 import time
 from typing import Any
@@ -154,7 +156,7 @@ class BinanceOHLCVCollector:
         end_ms: int,
     ) -> list[Any]:
         url = f"{str(self._settings.binance_base_url).rstrip('/')}{self._KLINES_PATH}"
-        params = {
+        params: dict[str, str | int] = {
             "symbol": symbol.replace("/", "").upper(),
             "interval": timeframe,
             "startTime": start_ms,
@@ -204,7 +206,22 @@ class BinanceOHLCVCollector:
             try:
                 delay = max(delay, float(retry_after))
             except ValueError:
-                logger.warning("Ignoring invalid Binance Retry-After header: %s", retry_after)
+                try:
+                    retry_at = parsedate_to_datetime(retry_after)
+                    if retry_at.tzinfo is None:
+                        retry_at = retry_at.replace(tzinfo=UTC)
+                    delay = max(
+                        delay,
+                        (
+                            retry_at.astimezone(UTC)
+                            - self._clock().astimezone(UTC)
+                        ).total_seconds(),
+                    )
+                except (TypeError, ValueError, OverflowError):
+                    logger.warning(
+                        "Ignoring invalid Binance Retry-After header: %s", retry_after
+                    )
+        delay = max(0.0, delay)
         logger.warning("Retrying Binance request in %.2f seconds", delay)
         self._sleep(delay)
 
@@ -245,7 +262,7 @@ class BinanceOHLCVCollector:
     def _validate_page_order(page: list[Candle]) -> None:
         if any(
             current.open_time <= previous.open_time
-            for previous, current in zip(page, page[1:])
+            for previous, current in pairwise(page)
         ):
             raise DataValidationError("Binance klines must have increasing open times")
 

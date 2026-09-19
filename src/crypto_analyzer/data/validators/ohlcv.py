@@ -3,11 +3,12 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 import math
-from numbers import Number
+from numbers import Real
 from typing import Any
 
 import pandas as pd
 
+from crypto_analyzer.config.markets import BINANCE_TIMEFRAME_DURATIONS
 from crypto_analyzer.data.exceptions import ConfigurationError
 from crypto_analyzer.data.validators.report import (
     IssueSeverity,
@@ -21,29 +22,10 @@ REQUIRED_COLUMNS = frozenset(
 PRICE_COLUMNS = ("open", "high", "low", "close")
 NUMERIC_COLUMNS = (*PRICE_COLUMNS, "volume")
 
-TIMEFRAME_DURATIONS: dict[str, timedelta] = {
-    "1s": timedelta(seconds=1),
-    "1m": timedelta(minutes=1),
-    "3m": timedelta(minutes=3),
-    "5m": timedelta(minutes=5),
-    "15m": timedelta(minutes=15),
-    "30m": timedelta(minutes=30),
-    "1h": timedelta(hours=1),
-    "2h": timedelta(hours=2),
-    "4h": timedelta(hours=4),
-    "6h": timedelta(hours=6),
-    "8h": timedelta(hours=8),
-    "12h": timedelta(hours=12),
-    "1d": timedelta(days=1),
-    "3d": timedelta(days=3),
-    "1w": timedelta(weeks=1),
-}
-
-
 def timeframe_duration(timeframe: str) -> timedelta:
     """Return the fixed duration represented by a supported Binance timeframe."""
     try:
-        return TIMEFRAME_DURATIONS[timeframe]
+        return BINANCE_TIMEFRAME_DURATIONS[timeframe]
     except KeyError as error:
         raise ConfigurationError(
             f"timeframe cannot be validated as a fixed interval: {timeframe}"
@@ -73,6 +55,7 @@ class OHLCVValidator:
 
         issues: list[ValidationIssue] = []
         missing_columns = sorted(REQUIRED_COLUMNS.difference(frame.columns))
+        unexpected_columns = sorted(set(frame.columns).difference(REQUIRED_COLUMNS))
         if missing_columns:
             issues.append(
                 self._error(
@@ -81,6 +64,13 @@ class OHLCVValidator:
                 )
             )
             return ValidationReport(tuple(issues))
+        if unexpected_columns:
+            issues.append(
+                self._error(
+                    "unexpected_columns",
+                    f"canonical dataset contains unexpected columns: {', '.join(unexpected_columns)}",
+                )
+            )
 
         if frame.empty:
             issues.append(
@@ -305,9 +295,6 @@ def _is_finite_number(value: Any) -> bool:
         return False
     if isinstance(value, Decimal):
         return value.is_finite()
-    if not isinstance(value, Number):
+    if not isinstance(value, Real):
         return False
-    try:
-        return math.isfinite(value)
-    except TypeError:
-        return False
+    return math.isfinite(value)

@@ -7,15 +7,19 @@ import os
 from pathlib import Path
 import re
 from tempfile import NamedTemporaryFile
+import logging
 
 import pandas as pd
 
+from crypto_analyzer.config.markets import is_timeframe_boundary
 from crypto_analyzer.data.exceptions import DataStorageError, DataValidationError
 from crypto_analyzer.data.processors.candles import CANONICAL_COLUMNS
 from crypto_analyzer.data.validators import OHLCVValidator, timeframe_duration
 
 _MARKET_COMPONENT = re.compile(r"^[A-Za-z0-9]+$")
 _TIMEFRAME_COMPONENT = re.compile(r"^[1-9][0-9]*[smhdwM]$")
+
+logger = logging.getLogger(__name__)
 
 
 class MarketDataLayer(StrEnum):
@@ -113,8 +117,12 @@ class ParquetMarketDataStore:
             raise DataStorageError("cache range start must be earlier than end")
 
         duration = timeframe_duration(timeframe)
-        if (end_utc - start_utc) % duration:
-            raise DataStorageError("cache range must contain whole timeframe intervals")
+        if not is_timeframe_boundary(start_utc, timeframe) or not is_timeframe_boundary(
+            end_utc, timeframe
+        ):
+            raise DataStorageError(
+                f"cache range must align to {timeframe} Binance candle boundaries"
+            )
 
         existing = self.load_raw(symbol, timeframe)
         available = {
@@ -154,6 +162,10 @@ class ParquetMarketDataStore:
         self, frame: pd.DataFrame, timeframe: str, *, context: str
     ) -> None:
         report = self._validator.validate(frame, timeframe)
+        for issue in report.warnings:
+            logger.warning(
+                "Validation warning for %s [%s]: %s", context, issue.code, issue.message
+            )
         try:
             report.raise_for_errors()
         except DataValidationError as error:
@@ -170,9 +182,13 @@ class ParquetMarketDataStore:
         duplicate_rows = combined[combined["open_time"].duplicated(keep=False)]
         for open_time, group in duplicate_rows.groupby("open_time", sort=False):
             reference = group.iloc[0]
-            if any(not reference.equals(group.iloc[position]) for position in range(1, len(group))):
+            is_conflicting = any(
+                not reference.equals(group.iloc[position])
+                for position in range(1, len(group))
+            )
+            if is_conflicting:
                 raise DataStorageError(
-                    f"conflicting raw candles at {open_time.isoformat()}"
+                    f"conflicting raw candles at {open_time}"
                 )
 
         merged = combined.drop_duplicates(subset=["open_time"], keep="first")
