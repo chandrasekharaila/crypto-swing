@@ -49,6 +49,21 @@ def test_configured_windows_drive_registered_names() -> None:
     assert "trend_sma_20" not in registry.names
 
 
+def test_ema_distance_tracks_the_configured_ema_windows() -> None:
+    registry = build_default_registry(FeatureSettings(ema_windows=(5, 9)))
+
+    assert "trend_price_vs_ema_5" in registry.names
+    assert "trend_price_vs_ema_9" in registry.names
+    assert "trend_price_vs_ema_12" not in registry.names
+
+
+def test_trend_distance_covers_both_average_types() -> None:
+    registry = build_default_registry(FeatureSettings())
+
+    assert "trend_price_vs_sma_20" in registry.names
+    assert "trend_price_vs_ema_12" in registry.names
+
+
 def test_feature_names_are_unique() -> None:
     registry = build_default_registry(FeatureSettings())
 

@@ -36,6 +36,35 @@ def test_price_vs_sma_is_the_relative_distance(make_close_frame) -> None:
     assert series.iloc[2] == pytest.approx((30.0 - 25.0) / 30.0)
 
 
+def test_price_vs_ema_is_the_relative_distance_to_the_ema(make_close_frame) -> None:
+    frame = make_close_frame([10.0, 20.0, 30.0])
+    alpha = 2.0 / 3.0
+
+    series = trend.price_vs_ema(frame, 2)
+
+    seeded = alpha * 20.0 + (1.0 - alpha) * 10.0
+    average = alpha * 30.0 + (1.0 - alpha) * seeded
+    assert pd.isna(series.iloc[0])
+    assert series.iloc[2] == pytest.approx((30.0 - average) / 30.0)
+
+
+def test_price_vs_ema_is_zero_when_close_matches_the_average(make_close_frame) -> None:
+    frame = make_close_frame([50.0] * 8)
+
+    series = trend.price_vs_ema(frame, 3)
+
+    assert series.dropna().size > 0
+    assert series.dropna().eq(0.0).all()
+
+
+def test_price_vs_ema_is_signed_by_the_direction_of_the_move(make_close_frame) -> None:
+    rising = make_close_frame([100.0 + 5.0 * index for index in range(20)])
+    falling = make_close_frame([100.0 - 2.0 * index for index in range(20)])
+
+    assert trend.price_vs_ema(rising, 10).iloc[-1] > 0.0
+    assert trend.price_vs_ema(falling, 10).iloc[-1] < 0.0
+
+
 def test_ema_slope_is_zero_for_a_constant_series(make_close_frame) -> None:
     frame = make_close_frame([50.0] * 12)
 

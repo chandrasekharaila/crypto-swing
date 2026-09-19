@@ -38,6 +38,12 @@ def price_vs_sma(frame: pd.DataFrame, window: int) -> pd.Series:
     return safe_divide(frame["close"] - average, frame["close"])
 
 
+def price_vs_ema(frame: pd.DataFrame, span: int) -> pd.Series:
+    """Close relative to its own exponential moving average."""
+    average = ema(frame["close"], span)
+    return safe_divide(frame["close"] - average, frame["close"])
+
+
 def ema_spread_pct(frame: pd.DataFrame, fast: int, slow: int) -> pd.Series:
     """Fast EMA relative to the slow EMA, normalized by close."""
     spread = ema(frame["close"], fast) - ema(frame["close"], slow)
@@ -87,6 +93,18 @@ def register_trend_features(
                     ("span", span),
                     ("slope_window", settings.ema_slope_window),
                 ),
+            )
+        )
+        registry.register(
+            FeatureDefinition(
+                name=f"trend_price_vs_ema_{span}",
+                group=FeatureGroup.TREND,
+                description=(
+                    f"Close relative to its {span}-candle exponential moving average."
+                ),
+                lookback=span,
+                compute=partial(price_vs_ema, span=span),
+                parameters=(("span", span),),
             )
         )
 
