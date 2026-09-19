@@ -9,7 +9,7 @@ Binance public collector
     ↓
 OHLCV validation
     ↓
-Parquet storage and cache (not yet implemented)
+Parquet storage and cache
 ```
 
 The Binance collector uses the unauthenticated Spot REST kline endpoint. It
@@ -21,6 +21,13 @@ The OHLCV validator accepts canonical pandas DataFrames and returns an immutable
 report of structured errors and warnings. It never sorts, fills, drops, or
 otherwise repairs input data. Internal gaps are warnings; invalid structure,
 types, values, ordering, and incomplete candles are errors.
+
+Typed candles are converted to a canonical DataFrame before validation and
+storage. Raw and processed Parquet datasets use separate deterministic paths:
+`data/<layer>/binance/<BASE>-<QUOTE>/<timeframe>.parquet`. Raw updates are
+merged atomically, exact overlaps are deduplicated, and conflicting overlaps
+are rejected. Cache range inspection identifies only missing intervals for a
+collector; the storage module has no Binance client dependency.
 
 The package uses a `src` layout. Data responsibilities are separated into
 collectors, validators, processors, and storage modules. A future data service

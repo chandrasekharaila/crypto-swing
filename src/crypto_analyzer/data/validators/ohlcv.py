@@ -40,6 +40,16 @@ TIMEFRAME_DURATIONS: dict[str, timedelta] = {
 }
 
 
+def timeframe_duration(timeframe: str) -> timedelta:
+    """Return the fixed duration represented by a supported Binance timeframe."""
+    try:
+        return TIMEFRAME_DURATIONS[timeframe]
+    except KeyError as error:
+        raise ConfigurationError(
+            f"timeframe cannot be validated as a fixed interval: {timeframe}"
+        ) from error
+
+
 class OHLCVValidator:
     """Validate canonical candle frames without sorting or repairing them."""
 
@@ -55,7 +65,7 @@ class OHLCVValidator:
         Internal gaps are warnings because the validator cannot know whether an
         exchange outage or an illiquid market caused them. No values are changed.
         """
-        duration = self._timeframe_duration(timeframe)
+        duration = timeframe_duration(timeframe)
         validation_time = as_of or datetime.now(UTC)
         if validation_time.tzinfo is None:
             raise ConfigurationError("as_of must be timezone-aware")
@@ -90,15 +100,6 @@ class OHLCVValidator:
             issues.extend(self._validate_prices_and_volume(frame))
 
         return ValidationReport(tuple(issues))
-
-    @staticmethod
-    def _timeframe_duration(timeframe: str) -> timedelta:
-        try:
-            return TIMEFRAME_DURATIONS[timeframe]
-        except KeyError as error:
-            raise ConfigurationError(
-                f"timeframe cannot be validated as a fixed interval: {timeframe}"
-            ) from error
 
     def _validate_missing_values(self, frame: pd.DataFrame) -> list[ValidationIssue]:
         issues: list[ValidationIssue] = []
