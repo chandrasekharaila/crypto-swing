@@ -65,6 +65,31 @@ Downloaded OHLCV values become usable only after their inclusive `close_time`.
 They must not be interpreted as information available at `open_time` when
 building features or backtests.
 
+## Rebuilding the dataset
+
+Market data is not committed, so a fresh clone starts empty. One command rebuilds
+the whole research dataset from the configured universe:
+
+```bash
+python -m crypto_analyzer backfill \
+  --config config/universe.json \
+  --timeframe 1d --timeframe 4h \
+  --start 2017-01-01T00:00:00Z
+```
+
+`backfill` covers every configured symbol, and the pipeline fetches only the
+ranges it does not already hold, so re-running it is cheap and safe. Narrow a run
+with repeatable `--symbol` and `--timeframe`.
+
+Unlike `download`, an incomplete dataset is not a failure here. Ranges before a
+pair's listing date, and exchange outages inside its history, have nothing to
+fetch, so coverage below 100% is the normal outcome. The command reports coverage
+per dataset and fails only when a market cannot be collected or a stored dataset
+does not validate.
+
+The universe is configuration rather than code: edit `config/universe.json` to
+change which pairs are studied, then re-run the command above.
+
 ## Feature engineering
 
 ```python
