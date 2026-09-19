@@ -5,11 +5,12 @@ trades or manage exchange accounts.
 
 ## Current phase
 
-Phase 2 — Feature Engineering. Phase 1 provides the project structure, typed
+Phase 3 — Rule-Based Analysis. Phase 1 provides the project structure, typed
 configuration, a Binance public historical OHLCV collector, non-mutating OHLCV
 dataset validation, and atomic local Parquet storage with cache-aware range
 detection. Phase 2 adds a deterministic, point-in-time feature engine covering
 price, returns, trend, momentum, volatility, volume, and market structure.
+Phase 3 adds a transparent, rule-based regime detector.
 
 ## Requirements
 
@@ -84,3 +85,24 @@ ones, and it becomes available at that candle's `close_time`. The first
 Values are raw and unscaled — normalization belongs to a later phase and must be
 fit on training data only. Feature windows and periods are configured through
 `AppSettings.features`.
+
+## Regime classification
+
+```python
+from crypto_analyzer.regimes import RegimeDetector
+
+regimes = RegimeDetector().detect(features)
+
+regimes.frame[["open_time", "trend_regime", "volatility_regime", "combined_regime"]]
+
+for item in regimes.explain():          # newest row by default
+    print(f"{item.rule:20s} {item.supports:28s} {item.detail}")
+```
+
+Trend and volatility are classified on separate axes, so a market that is
+trending up while volatility is elevated reports both. Each axis is `unknown`
+until it has enough history — the two warm up independently.
+
+`explain()` returns one entry per rule with the measured value and the threshold
+it was compared against, so a classification can always be traced back to the
+measurements behind it. Every threshold lives in `AppSettings.regimes`.

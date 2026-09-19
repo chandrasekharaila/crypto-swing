@@ -133,3 +133,62 @@ undeclared gap fails the suite rather than reaching a model.
 
 Normalization, scaling, and feature selection are deliberately absent: they must
 be fit on training data only and belong to a later phase.
+
+## Phase 3 regime classification
+
+```text
+FeatureSet
+    ↓
+rule evaluation (four trend rules, one volatility ratio)
+    ↓
+RegimeResult (trend axis, volatility axis, combined label, rule measurements)
+```
+
+Trend and volatility are independent properties, so they are classified on
+separate axes and combined afterwards. A market trending up while volatility is
+elevated is described by both facts instead of being forced into one of them.
+
+`RegimeDetector` consumes a `FeatureSet` and computes no indicator of its own.
+Every threshold, window, and agreement requirement lives in `RegimeSettings`, so
+a classification can be reproduced exactly from its configuration.
+
+### Rules
+
+Four directional rules compare a measurement against a configured threshold and
+vote bullish, bearish, or neutral:
+
+| Rule | Measurement |
+|---|---|
+| `trend_ma_spread` | fast simple average relative to the slow one |
+| `trend_price_distance` | close relative to its fast simple average |
+| `trend_ema_slope` | slope of the fast exponential average |
+| `trend_ema_spread` | fast exponential average relative to the slow one |
+
+A direction is reported only when at least `trend_min_agreeing_rules` vote for it
+and those votes outweigh the opposing ones; otherwise the market is `sideways`.
+Requiring agreement rather than a single signal is what stops one noisy rule from
+flipping the classification.
+
+Volatility compares `volatility_atr_pct` with its own trailing mean over
+`volatility_lookback` candles. The bands are relative to the instrument's recent
+norm rather than an absolute level, which would not transfer across symbols or
+market eras.
+
+### Reasoning
+
+`RegimeResult.explain(position)` returns one `RegimeEvidence` per rule plus an
+aggregate entry, each carrying the rule name, the regime it supports, the
+measured value, and the threshold it was compared against. The explanation is
+built from the stored measurements rather than reconstructed, so it cannot
+disagree with the label it accompanies.
+
+### Warm-up
+
+The two axes warm up independently: trend needs its slow average, and volatility
+needs its ATR period plus the whole trailing norm window. An axis that is not yet
+classifiable reports `unknown` instead of a guess, and the combined label reports
+`unknown` until neither axis is.
+
+Regime labels inherit the feature layer's causality, and the regime tests verify
+it directly: replacing every candle after a cut point leaves every earlier label
+and rule measurement unchanged.
