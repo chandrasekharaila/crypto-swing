@@ -28,6 +28,16 @@ contract test explicitly:
 RUN_BINANCE_INTEGRATION=1 pytest tests/integration
 ```
 
+Linting, formatting, and static type checking:
+
+```bash
+ruff check src tests
+ruff format --check src tests
+mypy
+```
+
+`mypy` runs in strict mode over `src` only.
+
 ## Configuration
 
 `crypto_analyzer.config.AppSettings` centralizes Phase 1 settings. Defaults
