@@ -1,13 +1,13 @@
 """Atomic, collector-independent Parquet storage for market data."""
 
+import logging
+import os
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
-import os
 from pathlib import Path
-import re
 from tempfile import NamedTemporaryFile
-import logging
 
 import pandas as pd
 
@@ -47,9 +47,7 @@ class ParquetMarketDataStore:
         self._exchange = exchange.lower()
         self._validator = OHLCVValidator()
 
-    def path_for(
-        self, layer: MarketDataLayer, symbol: str, timeframe: str
-    ) -> Path:
+    def path_for(self, layer: MarketDataLayer, symbol: str, timeframe: str) -> Path:
         """Return a stable path without creating files or directories."""
         base, quote = self._parse_symbol(symbol)
         if not _TIMEFRAME_COMPONENT.fullmatch(timeframe):
@@ -154,7 +152,9 @@ class ParquetMarketDataStore:
         try:
             frame = pd.read_parquet(path, engine="pyarrow")
         except Exception as error:
-            raise DataStorageError(f"failed to read Parquet data from {path}") from error
+            raise DataStorageError(
+                f"failed to read Parquet data from {path}"
+            ) from error
         self._validate_frame(frame, timeframe, context=f"stored {layer.value} data")
         return frame
 
@@ -187,9 +187,7 @@ class ParquetMarketDataStore:
                 for position in range(1, len(group))
             )
             if is_conflicting:
-                raise DataStorageError(
-                    f"conflicting raw candles at {open_time}"
-                )
+                raise DataStorageError(f"conflicting raw candles at {open_time}")
 
         merged = combined.drop_duplicates(subset=["open_time"], keep="first")
         return merged.sort_values("open_time", kind="stable").reset_index(drop=True)
@@ -200,7 +198,10 @@ class ParquetMarketDataStore:
         temporary_path: Path | None = None
         try:
             with NamedTemporaryFile(
-                dir=path.parent, prefix=f".{path.stem}-", suffix=".parquet", delete=False
+                dir=path.parent,
+                prefix=f".{path.stem}-",
+                suffix=".parquet",
+                delete=False,
             ) as temporary:
                 temporary_path = Path(temporary.name)
             frame.to_parquet(temporary_path, engine="pyarrow", index=False)
@@ -213,9 +214,8 @@ class ParquetMarketDataStore:
     @staticmethod
     def _parse_symbol(symbol: str) -> tuple[str, str]:
         parts = symbol.split("/")
-        if (
-            len(parts) != 2
-            or not all(_MARKET_COMPONENT.fullmatch(part) for part in parts)
+        if len(parts) != 2 or not all(
+            _MARKET_COMPONENT.fullmatch(part) for part in parts
         ):
             raise DataStorageError(f"symbol must use safe BASE/QUOTE format: {symbol}")
         return parts[0], parts[1]

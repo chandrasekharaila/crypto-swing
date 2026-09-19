@@ -1,12 +1,12 @@
 """Binance public REST collector for historical OHLCV candles."""
 
+import logging
+import time
 from collections.abc import Callable
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from email.utils import parsedate_to_datetime
 from itertools import pairwise
-import logging
-import time
 from typing import Any
 
 import httpx
@@ -79,7 +79,9 @@ class BinanceOHLCVCollector:
 
         observed_at = self._clock()
         if observed_at.tzinfo is None:
-            raise ConfigurationError("collector clock must return a timezone-aware datetime")
+            raise ConfigurationError(
+                "collector clock must return a timezone-aware datetime"
+            )
         observed_at = observed_at.astimezone(UTC)
         requested_end = (end_time or observed_at).astimezone(UTC)
         effective_end = min(requested_end, observed_at)
@@ -126,7 +128,9 @@ class BinanceOHLCVCollector:
             if len(rows) < self._settings.request_limit:
                 break
 
-        return sorted(candles_by_open_time.values(), key=lambda candle: candle.open_time)
+        return sorted(
+            candles_by_open_time.values(), key=lambda candle: candle.open_time
+        )
 
     def _validate_request(
         self,
@@ -213,8 +217,7 @@ class BinanceOHLCVCollector:
                     delay = max(
                         delay,
                         (
-                            retry_at.astimezone(UTC)
-                            - self._clock().astimezone(UTC)
+                            retry_at.astimezone(UTC) - self._clock().astimezone(UTC)
                         ).total_seconds(),
                     )
                 except (TypeError, ValueError, OverflowError):
@@ -228,21 +231,27 @@ class BinanceOHLCVCollector:
     @staticmethod
     def _parse_kline(row: Any) -> Candle:
         if not isinstance(row, list) or len(row) < 7:
-            raise DataValidationError("Binance kline row must contain at least 7 fields")
+            raise DataValidationError(
+                "Binance kline row must contain at least 7 fields"
+            )
         try:
             open_ms = int(row[0])
             close_ms = int(row[6])
             prices = tuple(Decimal(str(value)) for value in row[1:5])
             volume = Decimal(str(row[5]))
         except (TypeError, ValueError, InvalidOperation) as error:
-            raise DataValidationError("Binance kline row contains invalid values") from error
+            raise DataValidationError(
+                "Binance kline row contains invalid values"
+            ) from error
 
         open_price, high, low, close = prices
         numeric_values = (*prices, volume)
         if not all(value.is_finite() for value in numeric_values):
             raise DataValidationError("Binance kline values must be finite")
         if min(prices) <= 0 or volume < 0:
-            raise DataValidationError("Binance prices must be positive and volume non-negative")
+            raise DataValidationError(
+                "Binance prices must be positive and volume non-negative"
+            )
         if high < max(open_price, close, low) or low > min(open_price, close, high):
             raise DataValidationError("Binance kline violates OHLC price bounds")
         if close_ms < open_ms:

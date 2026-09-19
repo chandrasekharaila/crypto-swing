@@ -24,7 +24,9 @@ def _frame(offsets: list[int]) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "open_time": open_times,
-            "close_time": open_times + pd.Timedelta(hours=1) - pd.Timedelta(milliseconds=1),
+            "close_time": open_times
+            + pd.Timedelta(hours=1)
+            - pd.Timedelta(milliseconds=1),
             "open": [100.0 + value for value in offsets],
             "high": [110.0 + value for value in offsets],
             "low": [90.0 + value for value in offsets],
@@ -89,9 +91,7 @@ def test_missing_ranges_identify_only_absent_intervals(tmp_path: Path) -> None:
     store = ParquetMarketDataStore(tmp_path)
     store.update_raw("SOL/USDT", "1h", _frame([0, 2]))
 
-    missing = store.missing_ranges(
-        "SOL/USDT", "1h", START, START + timedelta(hours=4)
-    )
+    missing = store.missing_ranges("SOL/USDT", "1h", START, START + timedelta(hours=4))
 
     assert missing == [
         TimeRange(START + timedelta(hours=1), START + timedelta(hours=2)),
@@ -104,10 +104,7 @@ def test_complete_cache_requires_no_download(tmp_path: Path) -> None:
     store.update_raw("BTC/USDT", "1h", _frame([0, 1, 2]))
 
     assert (
-        store.missing_ranges(
-            "BTC/USDT", "1h", START, START + timedelta(hours=3)
-        )
-        == []
+        store.missing_ranges("BTC/USDT", "1h", START, START + timedelta(hours=3)) == []
     )
 
 
@@ -131,7 +128,9 @@ def test_missing_ranges_reject_shifted_candle_boundaries(tmp_path: Path) -> None
         )
 
 
-def test_typed_candle_flows_through_frame_conversion_and_parquet(tmp_path: Path) -> None:
+def test_typed_candle_flows_through_frame_conversion_and_parquet(
+    tmp_path: Path,
+) -> None:
     store = ParquetMarketDataStore(tmp_path)
     candle = Candle(
         open_time=START,

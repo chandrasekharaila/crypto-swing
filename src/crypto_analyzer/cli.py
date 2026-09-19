@@ -1,15 +1,15 @@
 """Command-line interface for Phase 1 market-data operations."""
 
 import argparse
+import logging
 from collections.abc import Sequence
 from datetime import UTC, datetime
-import logging
 from pathlib import Path
 
 from crypto_analyzer.config import AppSettings, load_settings
 from crypto_analyzer.config.markets import floor_to_timeframe, is_timeframe_boundary
 from crypto_analyzer.data.collectors import BinanceOHLCVCollector
-from crypto_analyzer.data.exceptions import DataFoundationError, ConfigurationError
+from crypto_analyzer.data.exceptions import ConfigurationError, DataFoundationError
 from crypto_analyzer.data.service import MarketDataPipeline
 from crypto_analyzer.data.storage import ParquetMarketDataStore
 from crypto_analyzer.data.validators import timeframe_duration
@@ -24,10 +24,18 @@ def build_parser() -> argparse.ArgumentParser:
     download = subparsers.add_parser(
         "download", help="download or update closed Binance OHLCV candles"
     )
-    download.add_argument("--symbol", required=True, help="configured BASE/QUOTE symbol")
-    download.add_argument("--timeframe", required=True, help="configured Binance interval")
-    download.add_argument("--start", type=_parse_datetime, help="inclusive ISO-8601 UTC time")
-    download.add_argument("--end", type=_parse_datetime, help="exclusive ISO-8601 UTC time")
+    download.add_argument(
+        "--symbol", required=True, help="configured BASE/QUOTE symbol"
+    )
+    download.add_argument(
+        "--timeframe", required=True, help="configured Binance interval"
+    )
+    download.add_argument(
+        "--start", type=_parse_datetime, help="inclusive ISO-8601 UTC time"
+    )
+    download.add_argument(
+        "--end", type=_parse_datetime, help="exclusive ISO-8601 UTC time"
+    )
     download.add_argument(
         "--candles",
         type=_positive_int,
@@ -57,7 +65,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         settings = load_settings(args.config)
         if args.data_directory is not None:
-            settings = settings.model_copy(update={"data_directory": args.data_directory})
+            settings = settings.model_copy(
+                update={"data_directory": args.data_directory}
+            )
         start, end = resolve_download_range(
             settings,
             args.timeframe,
@@ -129,7 +139,9 @@ def _parse_datetime(value: str) -> datetime:
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as error:
-        raise argparse.ArgumentTypeError(f"invalid ISO-8601 datetime: {value}") from error
+        raise argparse.ArgumentTypeError(
+            f"invalid ISO-8601 datetime: {value}"
+        ) from error
     if parsed.tzinfo is None:
         raise argparse.ArgumentTypeError("datetime must include a UTC offset")
     return parsed.astimezone(UTC)
@@ -143,4 +155,3 @@ def _positive_int(value: str) -> int:
     if parsed < 1:
         raise argparse.ArgumentTypeError("value must be positive")
     return parsed
-

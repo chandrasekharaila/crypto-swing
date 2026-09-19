@@ -25,8 +25,7 @@ def test_default_download_range_uses_configured_candle_count() -> None:
 def test_loads_symbols_and_timeframes_from_json_configuration(tmp_path: Path) -> None:
     path = tmp_path / "settings.json"
     path.write_text(
-        '{"symbols":["ADA/USDT"],"timeframes":["1h"],'
-        '"primary_timeframe":"1h"}',
+        '{"symbols":["ADA/USDT"],"timeframes":["1h"],"primary_timeframe":"1h"}',
         encoding="utf-8",
     )
 

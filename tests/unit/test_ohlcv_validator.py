@@ -17,7 +17,9 @@ def _valid_frame(rows: int = 3) -> pd.DataFrame:
     return pd.DataFrame(
         {
             "open_time": open_times,
-            "close_time": open_times + pd.Timedelta(hours=1) - pd.Timedelta(milliseconds=1),
+            "close_time": open_times
+            + pd.Timedelta(hours=1)
+            - pd.Timedelta(milliseconds=1),
             "open": [100.0 + offset for offset in range(rows)],
             "high": [110.0 + offset for offset in range(rows)],
             "low": [90.0 + offset for offset in range(rows)],

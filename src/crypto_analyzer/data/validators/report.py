@@ -31,7 +31,9 @@ class ValidationReport:
 
     @property
     def errors(self) -> tuple[ValidationIssue, ...]:
-        return tuple(issue for issue in self.issues if issue.severity is IssueSeverity.ERROR)
+        return tuple(
+            issue for issue in self.issues if issue.severity is IssueSeverity.ERROR
+        )
 
     @property
     def warnings(self) -> tuple[ValidationIssue, ...]:

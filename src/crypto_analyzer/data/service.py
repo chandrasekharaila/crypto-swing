@@ -1,9 +1,9 @@
 """Orchestration for the Phase 1 collection-to-storage pipeline."""
 
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-import logging
 from pathlib import Path
 from typing import Protocol
 
@@ -83,9 +83,7 @@ class MarketDataPipeline:
                 "Market data already current; no API request needed",
                 extra={"symbol": symbol, "timeframe": timeframe},
             )
-            return DataUpdateResult(
-                symbol, timeframe, (), (), 0, len(stored), path
-            )
+            return DataUpdateResult(symbol, timeframe, (), (), 0, len(stored), path)
 
         downloaded_count = 0
         logger.info(
@@ -118,9 +116,7 @@ class MarketDataPipeline:
             frame = candles_to_frame(candles)
             report = self._validator.validate(frame, timeframe)
             for issue in report.warnings:
-                logger.warning(
-                    "Validation warning [%s]: %s", issue.code, issue.message
-                )
+                logger.warning("Validation warning [%s]: %s", issue.code, issue.message)
             report.raise_for_errors()
             self._store.update_raw(symbol, timeframe, frame)
             downloaded_count += len(frame)

@@ -2,7 +2,6 @@
 
 from datetime import UTC, datetime, timedelta
 
-
 BINANCE_TIMEFRAME_DURATIONS: dict[str, timedelta] = {
     "1s": timedelta(seconds=1),
     "1m": timedelta(minutes=1),

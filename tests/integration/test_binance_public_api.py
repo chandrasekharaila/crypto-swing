@@ -1,13 +1,12 @@
 """Opt-in contract test for Binance's unauthenticated kline endpoint."""
 
-from datetime import UTC, datetime, timedelta
 import os
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from crypto_analyzer.config import AppSettings
 from crypto_analyzer.data.collectors import BinanceOHLCVCollector
-
 
 pytestmark = [
     pytest.mark.integration,

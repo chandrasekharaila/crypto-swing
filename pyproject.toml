@@ -17,7 +17,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "mypy>=1.11,<2.0",
+    "pandas-stubs>=2.2,<3.0",
     "pytest>=8.0,<9.0",
+    "ruff>=0.12,<1.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -30,3 +33,19 @@ pythonpath = ["src"]
 markers = [
     "integration: tests that access external services",
 ]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "SIM", "RUF"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["crypto_analyzer"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+strict = true

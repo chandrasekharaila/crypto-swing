@@ -1,8 +1,8 @@
 """Non-mutating validation for canonical OHLCV datasets."""
 
+import math
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-import math
 from numbers import Real
 from typing import Any
 
@@ -21,6 +21,7 @@ REQUIRED_COLUMNS = frozenset(
 )
 PRICE_COLUMNS = ("open", "high", "low", "close")
 NUMERIC_COLUMNS = (*PRICE_COLUMNS, "volume")
+
 
 def timeframe_duration(timeframe: str) -> timedelta:
     """Return the fixed duration represented by a supported Binance timeframe."""
@@ -65,17 +66,16 @@ class OHLCVValidator:
             )
             return ValidationReport(tuple(issues))
         if unexpected_columns:
+            unexpected = ", ".join(unexpected_columns)
             issues.append(
                 self._error(
                     "unexpected_columns",
-                    f"canonical dataset contains unexpected columns: {', '.join(unexpected_columns)}",
+                    f"canonical dataset contains unexpected columns: {unexpected}",
                 )
             )
 
         if frame.empty:
-            issues.append(
-                self._warning("empty_dataset", "dataset contains no candles")
-            )
+            issues.append(self._warning("empty_dataset", "dataset contains no candles"))
             return ValidationReport(tuple(issues))
 
         issues.extend(self._validate_missing_values(frame))
@@ -126,7 +126,9 @@ class OHLCVValidator:
                         f"column '{column}' must use UTC, found {dtype.tz}",
                     )
                 )
-        return not issues and not frame[["open_time", "close_time"]].isna().any().any(), issues
+        return not issues and not frame[
+            ["open_time", "close_time"]
+        ].isna().any().any(), issues
 
     def _validate_numeric_types(
         self, frame: pd.DataFrame
@@ -219,7 +221,10 @@ class OHLCVValidator:
         issues: list[ValidationIssue] = []
         expected = pd.Timedelta(duration)
         for position in range(1, len(frame)):
-            difference = frame["open_time"].iloc[position] - frame["open_time"].iloc[position - 1]
+            difference = (
+                frame["open_time"].iloc[position]
+                - frame["open_time"].iloc[position - 1]
+            )
             if difference == expected:
                 continue
             row = (str(frame.index[position]),)
@@ -228,7 +233,7 @@ class OHLCVValidator:
                 issues.append(
                     self._warning(
                         "missing_candles",
-                        f"detected {missing_count} missing candle(s) before row {row[0]}",
+                        f"detected {missing_count} missing candle(s) before {row[0]}",
                         row,
                     )
                 )
@@ -236,7 +241,7 @@ class OHLCVValidator:
                 issues.append(
                     self._error(
                         "irregular_candle_interval",
-                        f"open_time interval before row {row[0]} does not match {duration}",
+                        f"open_time interval before {row[0]} does not match {duration}",
                         row,
                     )
                 )
@@ -278,9 +283,7 @@ class OHLCVValidator:
         return tuple(str(index) for index in frame.index[mask])
 
     @staticmethod
-    def _error(
-        code: str, message: str, rows: tuple[str, ...] = ()
-    ) -> ValidationIssue:
+    def _error(code: str, message: str, rows: tuple[str, ...] = ()) -> ValidationIssue:
         return ValidationIssue(IssueSeverity.ERROR, code, message, rows)
 
     @staticmethod

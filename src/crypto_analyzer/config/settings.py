@@ -47,9 +47,13 @@ class AppSettings(BaseModel):
             raise ValueError("at least one timeframe must be configured")
         if len(set(self.timeframes)) != len(self.timeframes):
             raise ValueError("timeframes must be unique")
-        unsupported = sorted(set(self.timeframes).difference(BINANCE_TIMEFRAME_DURATIONS))
+        unsupported = sorted(
+            set(self.timeframes).difference(BINANCE_TIMEFRAME_DURATIONS)
+        )
         if unsupported:
-            raise ValueError(f"unsupported Binance timeframes: {', '.join(unsupported)}")
+            raise ValueError(
+                f"unsupported Binance timeframes: {', '.join(unsupported)}"
+            )
         if self.primary_timeframe not in self.timeframes:
             raise ValueError("primary_timeframe must be included in timeframes")
 

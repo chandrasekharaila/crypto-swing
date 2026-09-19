@@ -61,9 +61,7 @@ def test_pipeline_downloads_validates_and_stores_missing_data(tmp_path: Path) ->
 def test_pipeline_is_idempotent_and_skips_unnecessary_api_calls(tmp_path: Path) -> None:
     settings = AppSettings(data_directory=tmp_path)
     collector = RecordingCollector()
-    pipeline = MarketDataPipeline(
-        settings, collector, ParquetMarketDataStore(tmp_path)
-    )
+    pipeline = MarketDataPipeline(settings, collector, ParquetMarketDataStore(tmp_path))
     end = START + timedelta(hours=2)
     pipeline.update("BTC/USDT", "1h", START, end)
     collector.calls.clear()
@@ -75,7 +73,9 @@ def test_pipeline_is_idempotent_and_skips_unnecessary_api_calls(tmp_path: Path) 
     assert collector.calls == []
 
 
-def test_pipeline_reports_unresolved_ranges_after_partial_download(tmp_path: Path) -> None:
+def test_pipeline_reports_unresolved_ranges_after_partial_download(
+    tmp_path: Path,
+) -> None:
     class PartialCollector(RecordingCollector):
         def fetch_historical(
             self,

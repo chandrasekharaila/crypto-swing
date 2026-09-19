@@ -15,8 +15,12 @@ def load_settings(path: Path | None = None) -> AppSettings:
     try:
         content = path.read_text(encoding="utf-8")
     except OSError as error:
-        raise ConfigurationError(f"could not read configuration file: {path}") from error
+        raise ConfigurationError(
+            f"could not read configuration file: {path}"
+        ) from error
     try:
         return AppSettings.model_validate_json(content)
     except ValidationError as error:
-        raise ConfigurationError(f"invalid configuration file {path}: {error}") from error
+        raise ConfigurationError(
+            f"invalid configuration file {path}: {error}"
+        ) from error

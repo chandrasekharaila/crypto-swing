@@ -17,3 +17,6 @@ data/features/*
 !data/features/.gitkeep
 data/experiments/*
 !data/experiments/.gitkeep
+
+# Local agent tooling state (session permissions, learned preferences).
+.commandcode/
