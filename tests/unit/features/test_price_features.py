@@ -50,18 +50,27 @@ def test_range_pct_is_range_over_close(make_frame) -> None:
     [
         price.body_ratio,
         price.range_pct,
-        price.close_location,
         price.upper_wick_ratio,
         price.lower_wick_ratio,
     ],
 )
-def test_flat_candle_yields_a_defined_zero(make_frame, compute) -> None:
+def test_flat_candle_reports_zero_for_magnitude_ratios(make_frame, compute) -> None:
     frame = make_frame([(100.0, 100.0, 100.0, 100.0, 5.0)])
 
     value = compute(frame).iloc[0]
 
     assert not pd.isna(value)
     assert value == 0.0
+
+
+def test_flat_candle_reports_the_midpoint_for_close_location(make_frame) -> None:
+    """A candle with no range has no position, so the neutral midpoint applies."""
+    frame = make_frame([(100.0, 100.0, 100.0, 100.0, 5.0)])
+
+    value = price.close_location(frame).iloc[0]
+
+    assert not pd.isna(value)
+    assert value == 0.5
 
 
 def test_gap_pct_compares_open_to_the_previous_close(make_frame) -> None:

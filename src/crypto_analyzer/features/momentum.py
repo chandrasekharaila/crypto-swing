@@ -8,7 +8,16 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from crypto_analyzer.features.config import FeatureSettings
-from crypto_analyzer.features.primitives import ema, safe_divide, wilder_smoothing
+from crypto_analyzer.features.primitives import (
+    ema,
+    ema_spread,
+    fractional_change,
+    moving_average,
+    rolling_high,
+    rolling_low,
+    safe_divide,
+    wilder_smoothing,
+)
 from crypto_analyzer.features.types import FeatureDefinition, FeatureGroup
 
 if TYPE_CHECKING:
@@ -18,19 +27,22 @@ if TYPE_CHECKING:
 def rsi(frame: pd.DataFrame, period: int) -> pd.Series:
     """Wilder's Relative Strength Index over ``period`` candles.
 
-    A window with no losses yields 100, which is the correct limit of the
-    ratio rather than a division artifact.
+    A window with no losses yields 100 and one with no gains yields 0, the limits
+    of the ratio. A window with no movement at all has no relative strength, so
+    the conventional neutral reading of 50 is returned rather than an undefined
+    ratio.
     """
     change = frame["close"].diff()
     average_gain = wilder_smoothing(change.clip(lower=0.0), period)
     average_loss = wilder_smoothing((-change).clip(lower=0.0), period)
-    relative_strength = average_gain / average_loss
-    return 100.0 - (100.0 / (1.0 + relative_strength))
+    index = 100.0 - (100.0 / (1.0 + average_gain / average_loss))
+    moved = (average_gain != 0.0) | (average_loss != 0.0)
+    return index.where(moved, 50.0)
 
 
 def macd_line(frame: pd.DataFrame, fast: int, slow: int) -> pd.Series:
     """Difference between the fast and slow exponential moving averages."""
-    return ema(frame["close"], fast) - ema(frame["close"], slow)
+    return ema_spread(frame["close"], fast, slow)
 
 
 def macd_signal(frame: pd.DataFrame, fast: int, slow: int, signal: int) -> pd.Series:
@@ -39,25 +51,31 @@ def macd_signal(frame: pd.DataFrame, fast: int, slow: int, signal: int) -> pd.Se
 
 
 def macd_histogram(frame: pd.DataFrame, fast: int, slow: int, signal: int) -> pd.Series:
-    """MACD line minus its signal line."""
-    return macd_line(frame, fast, slow) - macd_signal(frame, fast, slow, signal)
+    """MACD line minus its signal line, using a single MACD computation."""
+    line = macd_line(frame, fast, slow)
+    return line - ema(line, signal)
 
 
 def rate_of_change(frame: pd.DataFrame, window: int) -> pd.Series:
     """Percentage change in close over ``window`` candles."""
-    return frame["close"].pct_change(window) * 100.0
+    return fractional_change(frame["close"], window) * 100.0
 
 
 def stochastic_k(frame: pd.DataFrame, period: int) -> pd.Series:
-    """Position of close within the trailing high-low range, as a percentage."""
-    lowest = frame["low"].rolling(period, min_periods=period).min()
-    highest = frame["high"].rolling(period, min_periods=period).max()
-    return safe_divide(frame["close"] - lowest, highest - lowest) * 100.0
+    """Position of close within the trailing high-low range, as a percentage.
+
+    A window with no high-low range has no position within it, so the
+    conventional midpoint of 50 is returned rather than a fabricated extreme.
+    """
+    lowest = rolling_low(frame["low"], period)
+    highest = rolling_high(frame["high"], period)
+    position = safe_divide(frame["close"] - lowest, highest - lowest, zero_result=0.5)
+    return position * 100.0
 
 
 def stochastic_d(frame: pd.DataFrame, period: int, smooth: int) -> pd.Series:
     """Moving average of the stochastic oscillator."""
-    return stochastic_k(frame, period).rolling(smooth, min_periods=smooth).mean()
+    return moving_average(stochastic_k(frame, period), smooth)
 
 
 def register_momentum_features(
@@ -68,7 +86,10 @@ def register_momentum_features(
         FeatureDefinition(
             name=f"momentum_rsi_{settings.rsi_period}",
             group=FeatureGroup.MOMENTUM,
-            description=f"Wilder RSI over {settings.rsi_period} candles.",
+            description=(
+                f"Wilder RSI over {settings.rsi_period} candles; 50 when the "
+                "window has no movement."
+            ),
             lookback=settings.rsi_period + 1,
             compute=partial(rsi, period=settings.rsi_period),
             parameters=(("period", settings.rsi_period),),
@@ -146,7 +167,7 @@ def register_momentum_features(
             group=FeatureGroup.MOMENTUM,
             description=(
                 f"Close position within the trailing {settings.stoch_k_period}-candle "
-                "high-low range, as a percentage."
+                "high-low range, as a percentage; 50 when the window has no range."
             ),
             lookback=settings.stoch_k_period,
             compute=partial(stochastic_k, period=settings.stoch_k_period),

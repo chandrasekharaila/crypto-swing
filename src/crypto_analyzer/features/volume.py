@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from crypto_analyzer.features.config import FeatureSettings
-from crypto_analyzer.features.primitives import safe_divide, signed_direction
+from crypto_analyzer.features.primitives import (
+    fractional_change,
+    moving_average,
+    safe_divide,
+    signed_direction,
+)
 from crypto_analyzer.features.types import FeatureDefinition, FeatureGroup
 
 if TYPE_CHECKING:
@@ -17,27 +22,37 @@ if TYPE_CHECKING:
 
 def volume_ma(frame: pd.DataFrame, window: int) -> pd.Series:
     """Simple moving average of volume over ``window`` candles."""
-    return frame["volume"].rolling(window, min_periods=window).mean()
+    return moving_average(frame["volume"], window)
 
 
 def volume_change(frame: pd.DataFrame, period: int) -> pd.Series:
     """Fractional change in volume over ``period`` candles."""
-    return frame["volume"].pct_change(period)
+    return fractional_change(frame["volume"], period)
 
 
 def relative_volume(frame: pd.DataFrame, window: int) -> pd.Series:
-    """Volume relative to its own moving average."""
+    """Volume relative to its own moving average.
+
+    An all-zero window has no average to compare against, so the result is
+    missing rather than a fabricated zero.
+    """
     return safe_divide(frame["volume"], volume_ma(frame, window))
 
 
 def signed_volume_mean(frame: pd.DataFrame, window: int) -> pd.Series:
     """Average volume over ``window`` candles, signed by candle direction."""
     signed = frame["volume"] * signed_direction(frame)
-    return signed.rolling(window, min_periods=window).mean()
+    return moving_average(signed, window)
 
 
 def volume_close_corr(frame: pd.DataFrame, window: int) -> pd.Series:
-    """Rolling correlation between close and volume."""
+    """Rolling correlation between close and volume.
+
+    Correlation is undefined when either series is constant across the window,
+    which happens on quiet or illiquid stretches. That case is reported as
+    missing and declared through ``may_be_undefined`` rather than being filled
+    with a value that would look like a real measurement.
+    """
     return frame["close"].rolling(window, min_periods=window).corr(frame["volume"])
 
 
@@ -74,10 +89,11 @@ def register_volume_features(
                 group=FeatureGroup.VOLUME,
                 description=(
                     f"Rolling correlation between close and volume over {window} "
-                    "candles."
+                    "candles; undefined when either series is constant."
                 ),
                 lookback=window,
                 compute=partial(volume_close_corr, window=window),
+                may_be_undefined=True,
                 parameters=(("window", window),),
             )
         )
@@ -88,10 +104,11 @@ def register_volume_features(
             group=FeatureGroup.VOLUME,
             description=(
                 f"Volume relative to its {settings.relative_volume_window}-candle "
-                "moving average."
+                "moving average; undefined when the window is all zero."
             ),
             lookback=settings.relative_volume_window,
             compute=partial(relative_volume, window=settings.relative_volume_window),
+            may_be_undefined=True,
             parameters=(("window", settings.relative_volume_window),),
         )
     )
@@ -101,10 +118,11 @@ def register_volume_features(
             group=FeatureGroup.VOLUME,
             description=(
                 f"Fractional volume change over {settings.volume_change_period} "
-                "candles."
+                "candles; undefined when the prior candle had zero volume."
             ),
             lookback=settings.volume_change_period + 1,
             compute=partial(volume_change, period=settings.volume_change_period),
+            may_be_undefined=True,
             parameters=(("period", settings.volume_change_period),),
         )
     )

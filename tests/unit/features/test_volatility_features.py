@@ -73,3 +73,14 @@ def test_bollinger_width_collapses_for_a_constant_series(make_close_frame) -> No
     width = volatility.bollinger_width(frame, 3, 2.0)
 
     assert width.iloc[-1] == 0.0
+
+
+def test_bollinger_position_is_neutral_when_the_bands_collapse(
+    make_close_frame,
+) -> None:
+    """Collapsed bands have no interior, so the close is not reported at an extreme."""
+    frame = make_close_frame([10.0] * 5)
+
+    position = volatility.bollinger_position(frame, 3, 2.0)
+
+    assert position.iloc[-1] == 0.5

@@ -5,6 +5,7 @@ import json
 import pytest
 
 from crypto_analyzer.features import (
+    FeatureEngine,
     FeatureGroup,
     FeatureSettings,
     build_default_registry,
@@ -92,9 +93,53 @@ def test_metadata_serializes_to_plain_json() -> None:
             "group",
             "description",
             "lookback",
+            "may_be_undefined",
             "parameters",
         }
         json.dumps(payload)
+
+
+def test_undefined_declarations_are_limited_to_volume_measures() -> None:
+    registry = build_default_registry(FeatureSettings())
+
+    declared = {
+        metadata.name for metadata in registry.metadata if metadata.may_be_undefined
+    }
+
+    assert declared
+    assert all(name.startswith("volume_") for name in declared)
+
+
+def test_undeclared_features_stay_defined_after_warmup(stress_frames) -> None:
+    """Every feature is either defined past warmup or declares that it may not be.
+
+    This is the guard for the audit's undeclared-NaN finding: a feature that goes
+    missing on a degenerate window without saying so fails here.
+    """
+    engine = FeatureEngine()
+
+    for label, frame in stress_frames.items():
+        result = engine.compute(frame, symbol="BTC/USDT", timeframe="1h")
+        for metadata in result.metadata:
+            if metadata.may_be_undefined:
+                continue
+            after_warmup = result.frame[metadata.name].iloc[metadata.lookback - 1 :]
+            assert not after_warmup.isna().any(), f"{metadata.name} on {label}"
+
+
+def test_declared_features_actually_go_undefined(stress_frames) -> None:
+    """A declaration must describe a real case, not stand in for one."""
+    engine = FeatureEngine()
+    result = engine.compute(
+        stress_frames["zero_volume"], symbol="BTC/USDT", timeframe="1h"
+    )
+
+    undeclared_names = {
+        metadata.name for metadata in result.metadata if metadata.may_be_undefined
+    }
+
+    assert "volume_relative_20" in undeclared_names
+    assert result.frame["volume_relative_20"].iloc[19:].isna().all()
 
 
 def test_declared_lookback_matches_the_observed_warmup(

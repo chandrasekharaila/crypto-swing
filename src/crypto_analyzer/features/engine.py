@@ -49,6 +49,12 @@ class FeatureEngine:
 
         Every returned value is derived from candles up to and including its own
         row, so the value becomes available at that candle's ``close_time``.
+
+        Feature values never depend on the clock. ``as_of`` is forwarded to the
+        input validator, which defaults to the current time when it is omitted;
+        that default makes the *validation* outcome time-dependent, because a
+        candle that is still forming now would be rejected. Pass an explicit
+        instant when a result must be reproducible independently of when it runs.
         """
         self._validate_input(frame, timeframe, as_of=as_of)
         self._warn_when_history_is_insufficient(frame, symbol, timeframe)

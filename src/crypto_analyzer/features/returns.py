@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from crypto_analyzer.features.config import FeatureSettings
+from crypto_analyzer.features.primitives import fractional_change
 from crypto_analyzer.features.types import FeatureDefinition, FeatureGroup
 
 if TYPE_CHECKING:
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 
 def simple_returns(frame: pd.DataFrame, window: int) -> pd.Series:
     """Fractional change in close over ``window`` candles."""
-    return frame["close"].pct_change(window)
+    return fractional_change(frame["close"], window)
 
 
 def log_returns(frame: pd.DataFrame, window: int) -> pd.Series:

@@ -33,6 +33,18 @@ def test_rsi_stays_within_its_bounds_on_mixed_input(make_close_frame) -> None:
     assert series.between(0.0, 100.0).all()
 
 
+def test_rsi_is_neutral_when_the_window_has_no_movement(make_close_frame) -> None:
+    """A flat window has no relative strength, so RSI reports neither extreme."""
+    frame = make_close_frame([100.0] * 20)
+
+    series = momentum.rsi(frame, 14)
+
+    # RSI consumes one candle for the change plus the smoothing period.
+    assert pd.isna(series.iloc[:14]).all()
+    assert series.iloc[14:].notna().all()
+    assert series.iloc[-1] == pytest.approx(50.0)
+
+
 def test_macd_line_is_the_difference_of_the_two_averages(make_close_frame) -> None:
     frame = make_close_frame([100.0 + index for index in range(40)])
 
@@ -79,12 +91,13 @@ def test_stochastic_k_compares_close_to_the_window_extremes(make_frame) -> None:
     assert series.iloc[2] == pytest.approx((12.0 - 8.0) / (13.0 - 8.0) * 100.0)
 
 
-def test_stochastic_k_is_flat_at_the_midpoint_when_range_is_zero(make_frame) -> None:
+def test_stochastic_k_is_neutral_when_the_window_has_no_range(make_frame) -> None:
+    """A window with no range has no position, so the midpoint, not an extreme."""
     frame = make_frame([(10.0, 10.0, 10.0, 10.0, 1.0)] * 4)
 
     series = momentum.stochastic_k(frame, 3)
 
-    assert series.iloc[3] == 0.0
+    assert series.iloc[3] == 50.0
 
 
 def test_stochastic_d_smooths_the_oscillator(make_close_frame) -> None:

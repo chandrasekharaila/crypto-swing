@@ -32,6 +32,7 @@ class FeatureMetadata:
     group: FeatureGroup
     description: str
     lookback: int
+    may_be_undefined: bool = False
     parameters: tuple[tuple[str, object], ...] = ()
 
     def to_dict(self) -> dict[str, object]:
@@ -41,6 +42,7 @@ class FeatureMetadata:
             "group": self.group.value,
             "description": self.description,
             "lookback": self.lookback,
+            "may_be_undefined": self.may_be_undefined,
             "parameters": dict(self.parameters),
         }
 
@@ -54,6 +56,7 @@ class FeatureDefinition:
     description: str
     lookback: int
     compute: FeatureCompute = field(compare=False, repr=False)
+    may_be_undefined: bool = False
     parameters: tuple[tuple[str, object], ...] = ()
 
     @property
@@ -64,6 +67,7 @@ class FeatureDefinition:
             group=self.group,
             description=self.description,
             lookback=self.lookback,
+            may_be_undefined=self.may_be_undefined,
             parameters=self.parameters,
         )
 

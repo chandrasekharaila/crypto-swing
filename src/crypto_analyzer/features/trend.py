@@ -8,7 +8,12 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from crypto_analyzer.features.config import FeatureSettings
-from crypto_analyzer.features.primitives import ema, safe_divide
+from crypto_analyzer.features.primitives import (
+    ema,
+    ema_spread,
+    moving_average,
+    safe_divide,
+)
 from crypto_analyzer.features.types import FeatureDefinition, FeatureGroup
 
 if TYPE_CHECKING:
@@ -17,7 +22,7 @@ if TYPE_CHECKING:
 
 def sma(frame: pd.DataFrame, window: int) -> pd.Series:
     """Simple moving average of close over ``window`` candles."""
-    return frame["close"].rolling(window, min_periods=window).mean()
+    return moving_average(frame["close"], window)
 
 
 def exponential_ma(frame: pd.DataFrame, span: int) -> pd.Series:
@@ -46,8 +51,10 @@ def price_vs_ema(frame: pd.DataFrame, span: int) -> pd.Series:
 
 def ema_spread_pct(frame: pd.DataFrame, fast: int, slow: int) -> pd.Series:
     """Fast EMA relative to the slow EMA, normalized by close."""
-    spread = ema(frame["close"], fast) - ema(frame["close"], slow)
-    return safe_divide(spread, frame["close"])
+    return safe_divide(
+        ema_spread(frame["close"], fast, slow),
+        frame["close"],
+    )
 
 
 def register_trend_features(

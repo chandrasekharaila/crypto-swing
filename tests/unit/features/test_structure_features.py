@@ -75,6 +75,91 @@ def test_breakout_features_are_missing_during_warmup(make_frame) -> None:
     assert series.iloc[3:].notna().all()
 
 
+def test_higher_high_flags_a_rising_window_extreme(make_frame) -> None:
+    frame = make_frame(
+        [
+            (10.0, 12.0, 9.0, 11.0, 1.0),
+            (11.0, 13.0, 10.0, 12.0, 1.0),
+            (12.0, 20.0, 11.0, 19.0, 1.0),
+            (19.0, 21.0, 18.0, 20.0, 1.0),
+        ]
+    )
+
+    series = structure.higher_high(frame, 2)
+
+    # Window highs are 13 (rows 0-1) and 21 (rows 2-3), so the latest is higher.
+    assert pd.isna(series.iloc[:3]).all()
+    assert series.iloc[3] == 1.0
+
+
+def test_higher_low_flags_a_rising_window_trough(make_frame) -> None:
+    frame = make_frame(
+        [
+            (10.0, 12.0, 9.0, 11.0, 1.0),
+            (11.0, 13.0, 10.0, 12.0, 1.0),
+            (12.0, 20.0, 11.0, 19.0, 1.0),
+            (19.0, 21.0, 18.0, 20.0, 1.0),
+        ]
+    )
+
+    series = structure.higher_low(frame, 2)
+
+    # Window lows are 9 (rows 0-1) and 11 (rows 2-3).
+    assert series.iloc[3] == 1.0
+
+
+def test_lower_low_flags_a_falling_window_trough(make_frame) -> None:
+    frame = make_frame(
+        [
+            (20.0, 21.0, 18.0, 19.0, 1.0),
+            (19.0, 20.0, 15.0, 16.0, 1.0),
+            (16.0, 17.0, 14.0, 15.0, 1.0),
+            (15.0, 16.0, 8.0, 9.0, 1.0),
+        ]
+    )
+
+    series = structure.lower_low(frame, 2)
+
+    # Window lows are 15 (rows 0-1) and 8 (rows 2-3).
+    assert series.iloc[3] == 1.0
+
+
+def test_lower_high_flags_a_falling_window_extreme(make_frame) -> None:
+    frame = make_frame(
+        [
+            (20.0, 25.0, 18.0, 19.0, 1.0),
+            (19.0, 24.0, 15.0, 16.0, 1.0),
+            (16.0, 22.0, 14.0, 15.0, 1.0),
+            (15.0, 21.0, 8.0, 9.0, 1.0),
+        ]
+    )
+
+    series = structure.lower_high(frame, 2)
+
+    # Window highs are 25 (rows 0-1) and 22 (rows 2-3).
+    assert series.iloc[3] == 1.0
+
+
+def test_swing_labels_need_two_complete_windows(make_frame) -> None:
+    frame = make_frame([(10.0, 11.0, 9.0, 10.0, 1.0)] * 8)
+
+    series = structure.higher_high(frame, 3)
+
+    assert pd.isna(series.iloc[:5]).all()
+    assert series.iloc[5:].notna().all()
+
+
+def test_swing_labels_are_defined_rather_than_missing_on_flat_input(
+    make_frame,
+) -> None:
+    """Equal windows compare False, which is a real answer, not a missing one."""
+    frame = make_frame([(10.0, 11.0, 9.0, 10.0, 1.0)] * 8)
+
+    series = structure.lower_low(frame, 3)
+
+    assert series.iloc[5:].eq(0.0).all()
+
+
 def test_high_and_low_distance_are_relative_to_the_trailing_extremes(
     make_frame,
 ) -> None:

@@ -35,18 +35,27 @@ def _frame_from_candles(
     )
 
 
-def _frame_from_close(close: Sequence[float], span: float = 2.0) -> pd.DataFrame:
+def _frame_from_close(
+    close: Sequence[float],
+    span: float = 2.0,
+    volume: Sequence[float] | None = None,
+) -> pd.DataFrame:
     open_prices = [close[0], *close[:-1]]
+    volumes = (
+        list(volume)
+        if volume is not None
+        else [100.0 + index for index in range(len(close))]
+    )
     candles = [
         (
             open_price,
             max(open_price, value) + span,
             min(open_price, value) - span,
             value,
-            100.0 + index,
+            volumes[index],
         )
         for index, (open_price, value) in enumerate(
-            zip(open_prices, close, strict=False)
+            zip(open_prices, close, strict=True)
         )
     ]
     return _frame_from_candles(candles)
@@ -84,3 +93,32 @@ def wave_frame() -> pd.DataFrame:
         100.0 + 0.05 * index + 5.0 * math.sin(index / 6) for index in range(WAVE_ROWS)
     ]
     return _frame_from_close(close)
+
+
+@pytest.fixture
+def stress_frames() -> dict[str, pd.DataFrame]:
+    """Return frames that stress degenerate windows without breaking OHLC invariants.
+
+    These cover the cases where a ratio or a correlation has no defined value:
+    a range of zero, a constant series, and a zero volume base.
+    """
+    rows = WAVE_ROWS
+    flat = [100.0] * rows
+    varying = [100.0 + (index % 7) for index in range(rows)]
+    trending = [100.0 + index for index in range(rows)]
+    flat_tail = [
+        *[100.0 + index for index in range(rows - 25)],
+        *[100.0 + (rows - 25)] * 25,
+    ]
+    return {
+        "flat_price_flat_volume": _frame_from_close(flat, volume=[50.0] * rows),
+        "varying_price_constant_volume": _frame_from_close(
+            varying, volume=[50.0] * rows
+        ),
+        "zero_volume": _frame_from_close(varying, volume=[0.0] * rows),
+        "flat_tail_after_trend": _frame_from_close(flat_tail, volume=[50.0] * rows),
+        "strictly_increasing": _frame_from_close(
+            trending, volume=[50.0 + index for index in range(rows)]
+        ),
+        "near_zero_volume": _frame_from_close(varying, volume=[0.0001] * rows),
+    }
